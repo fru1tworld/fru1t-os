@@ -1,26 +1,27 @@
 ENTRY(boot)
 
 SECTIONS {
-	. = 0x80200000;
-	.text :{
-		KEEP(*(.text.boot));
-		*(.text .text.*)
-	}
-	.rodata : ALIGN(4) {
-		*(.rodata .rodata.*);
-	}
-
-	.data : ALIGN(4) {
-		*(.data .data.*); 
-	}
-
-	.bss : ALIGN(4) {
-		__bss = .;
-		*(.bss .bss.* .sbss .sbss.*);
-		__bss_end = .;
-	}
-
-	. = ALIGN(4);
-	. += 128 * 1024; /* 128KB */
-	__stack_top = .;
+    . = 0x80200000;
+    
+    .text : {
+        *(.text.boot)
+        *(.text)
+    }
+    
+    .rodata : {
+        *(.rodata*)
+    }
+    
+    .data : {
+        *(.data)
+    }
+    
+    .bss : {
+        bss = .;
+        *(.bss)
+        bss_end = .;
+    }
+    
+    . = ALIGN(16);
+    __stack_top = . + 0x10000;  /* 64KB 스택 */
 }
