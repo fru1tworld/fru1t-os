@@ -1,0 +1,99 @@
+     VMA      LMA     Size Align Out     In      Symbol
+       0        0 80200000     1 . = 0x80200000
+80200000 80200000       4a     2 .text
+80200000 80200000        e     2         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.text.boot)
+80200000 80200000        0     1                 .L0 
+80200000 80200000        0     1                 .L0 
+80200000 80200000        0     1                 $x
+80200000 80200000        0     1                 .L0 
+80200000 80200000        e     1                 boot
+8020000e 8020000e        0     1                 .L0 
+8020000e 8020000e        0     1                 .L0 
+8020000e 8020000e       3c     2         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.text)
+8020000e 8020000e        0     1                 .L0 
+8020000e 8020000e        0     1                 .L0 
+8020000e 8020000e        0     1                 $x
+8020000e 8020000e        0     1                 .L0 
+8020000e 8020000e       16     1                 memset
+80200012 80200012        0     1                 .L0 
+80200012 80200012        0     1                 .L0 
+80200014 80200014        0     1                 .L0 
+80200014 80200014        0     1                 .L0 
+80200014 80200014        0     1                 .L0 
+80200018 80200018        0     1                 .L0 
+80200018 80200018        0     1                 .L0 
+8020001e 8020001e        0     1                 .L0 
+8020001e 8020001e        0     1                 .L0 
+80200022 80200022        0     1                 .L0 
+80200022 80200022        0     1                 .L0 
+80200022 80200022        0     1                 .L0 
+80200024 80200024        0     1                 .L0 
+80200024 80200024        0     1                 .L0 
+80200024 80200024        0     1                 .L0 
+80200024 80200024        0     1                 .L0 
+80200024 80200024        0     1                 .L0 
+80200024 80200024       26     1                 kernel_main
+8020002c 8020002c        0     1                 .L0 
+80200038 80200038        0     1                 .L0 
+8020003a 8020003a        0     1                 .L0 
+8020003a 8020003a        0     1                 .L0 
+8020003a 8020003a        0     1                 .L0 
+8020003e 8020003e        0     1                 .L0 
+8020003e 8020003e        0     1                 .L0 
+80200044 80200044        0     1                 .L0 
+80200044 80200044        0     1                 .L0 
+80200048 80200048        0     1                 .L0 
+80200048 80200048        0     1                 .L0 
+80200048 80200048        0     1                 .L0 
+8020004a 8020004a        0     1                 .L0 
+8020004a 8020004a        0     1                 .L0 
+8020004c 8020004c        0     4 .bss
+8020004c 8020004c        0     1         __bss = .
+8020004c 8020004c        0     1         __bss_end = .
+8020004c 8020004c        0     1 . = ALIGN(4)
+8020004c 8020004c    20000     1 . += 128 * 1024
+8022004c 8022004c        0     1 __stack_top = .
+       0        0       63     1 .debug_loclists
+       0        0       63     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_loclists)
+       0        0        0     1                 $d
+       c        c        0     1                 .L0 
+       0        0       e1     1 .debug_abbrev
+       0        0       e1     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_abbrev)
+       0        0        0     1                 $d
+       0        0       e3     1 .debug_info
+       0        0       e3     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_info)
+       0        0        0     1                 $d
+       0        0       17     1 .debug_rnglists
+       0        0       17     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_rnglists)
+       0        0        0     1                 $d
+       c        c        0     1                 .L0 
+       0        0       48     1 .debug_str_offsets
+       0        0       48     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_str_offsets)
+       0        0        0     1                 $d
+       8        8        0     1                 .L0 
+       0        0       a6     1 .debug_str
+       0        0       a6     1         <internal>:(.debug_str)
+       0        0       14     1 .debug_addr
+       0        0       14     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_addr)
+       0        0        0     1                 $d
+       8        8        0     1                 .L0 
+       0        0       3b     1 .comment
+       0        0       3b     1         <internal>:(.comment)
+       0        0       47     1 .riscv.attributes
+       0        0       47     1         <internal>:(.riscv.attributes)
+       0        0       44     4 .debug_frame
+       0        0       44     4         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_frame)
+       0        0        0     1                 .L0 
+       0        0        0     1                 $d
+       0        0       ba     1 .debug_line
+       0        0       ba     1         /var/folders/y1/v4kxn_zn7sxbdj8x6p6hsc280000gn/T/kernel-4891e2.o:(.debug_line)
+       0        0        0     1                 .Lline_table_start0
+       0        0        0     1                 $d
+       0        0       2e     1 .debug_line_str
+       0        0       2e     1         <internal>:(.debug_line_str)
+       0        0      160     4 .symtab
+       0        0      160     4         <internal>:(.symtab)
+       0        0       ce     1 .shstrtab
+       0        0       ce     1         <internal>:(.shstrtab)
+       0        0       68     1 .strtab
+       0        0       68     1         <internal>:(.strtab)
