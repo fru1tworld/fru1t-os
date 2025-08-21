@@ -1,4 +1,5 @@
 #include "common.h"
+#include "kernel.h"
 
 void putchar(char ch);
 
@@ -61,4 +62,16 @@ void printf(const char *fmt, ...) {
 
 end:
     va_end(vargs);
+}
+
+void *memset(void *s, int c, size_t n) {
+    unsigned char *p = s;
+    while (n--) {
+        *p++ = c;
+    }
+    return s;
+}
+
+void handle_syscall(struct trap_frame *f) {
+    (void)f;
 }
