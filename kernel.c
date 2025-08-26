@@ -143,12 +143,495 @@ void handle_trap(struct trap_frame *f) {
     WRITE_CSR(sepc, user_pc);
 }
  
+struct process processes[MAX_PROCESSES];
+struct process *current_proc = NULL;
+
+void scheduler_init(void) {
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        processes[i].pid = i;
+        processes[i].state = PROC_UNUSED;
+        processes[i].sp = 0;
+        processes[i].page_table = NULL;
+        processes[i].trap_frame = NULL;
+    }
+    current_proc = NULL;
+}
+
+struct process *create_process(void (*entry_point)(void)) {
+    struct process *proc = NULL;
+    
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        if (processes[i].state == PROC_UNUSED) {
+            proc = &processes[i];
+            break;
+        }
+    }
+    
+    if (!proc) {
+        printf("No free process slots\n");
+        return NULL;
+    }
+
+    proc->state = PROC_READY;
+    proc->sp = (vaddr_t)&proc->stack[STACK_SIZE - sizeof(struct trap_frame)];
+    proc->trap_frame = (struct trap_frame *)proc->sp;
+    
+    memset(proc->trap_frame, 0, sizeof(struct trap_frame));
+    proc->trap_frame->ra = (uint32_t)entry_point;
+    proc->trap_frame->sp = (uint32_t)&proc->stack[STACK_SIZE - 8];
+    
+    printf("Created process %d\n", proc->pid);
+    return proc;
+}
+
+void schedule(void) {
+    struct process *next = NULL;
+    
+    if (current_proc && current_proc->state == PROC_RUNNING) {
+        current_proc->state = PROC_READY;
+    }
+    
+    int start = current_proc ? (current_proc->pid + 1) % MAX_PROCESSES : 0;
+    for (int i = 0; i < MAX_PROCESSES; i++) {
+        int idx = (start + i) % MAX_PROCESSES;
+        if (processes[idx].state == PROC_READY) {
+            next = &processes[idx];
+            break;
+        }
+    }
+    
+    if (!next) {
+        printf("No ready processes\n");
+        return;
+    }
+    
+    struct process *prev = current_proc;
+    current_proc = next;
+    current_proc->state = PROC_RUNNING;
+    
+    printf("Switching to process %d\n", current_proc->pid);
+    
+    if (prev) {
+        context_switch(prev, current_proc);
+    }
+}
+
+void yield(void) {
+    if (current_proc) {
+        current_proc->state = PROC_READY;
+        schedule();
+    }
+}
+
+void process_exit(void) {
+    if (current_proc) {
+        printf("Process %d exiting\n", current_proc->pid);
+        current_proc->state = PROC_UNUSED;
+        current_proc = NULL;
+        schedule();
+    }
+}
+
+void context_switch(struct process *prev, struct process *next) {
+    struct trap_frame *prev_frame = prev->trap_frame;
+    struct trap_frame *next_frame = next->trap_frame;
+    
+    __asm__ __volatile__(
+        "sw ra, 4 * 0(%0)\n"
+        "sw gp, 4 * 1(%0)\n"
+        "sw tp, 4 * 2(%0)\n"
+        "sw t0, 4 * 3(%0)\n"
+        "sw t1, 4 * 4(%0)\n"
+        "sw t2, 4 * 5(%0)\n"
+        "sw t3, 4 * 6(%0)\n"
+        "sw t4, 4 * 7(%0)\n"
+        "sw t5, 4 * 8(%0)\n"
+        "sw t6, 4 * 9(%0)\n"
+        "sw a0, 4 * 10(%0)\n"
+        "sw a1, 4 * 11(%0)\n"
+        "sw a2, 4 * 12(%0)\n"
+        "sw a3, 4 * 13(%0)\n"
+        "sw a4, 4 * 14(%0)\n"
+        "sw a5, 4 * 15(%0)\n"
+        "sw a6, 4 * 16(%0)\n"
+        "sw a7, 4 * 17(%0)\n"
+        "sw s0, 4 * 18(%0)\n"
+        "sw s1, 4 * 19(%0)\n"
+        "sw s2, 4 * 20(%0)\n"
+        "sw s3, 4 * 21(%0)\n"
+        "sw s4, 4 * 22(%0)\n"
+        "sw s5, 4 * 23(%0)\n"
+        "sw s6, 4 * 24(%0)\n"
+        "sw s7, 4 * 25(%0)\n"
+        "sw s8, 4 * 26(%0)\n"
+        "sw s9, 4 * 27(%0)\n"
+        "sw s10, 4 * 28(%0)\n"
+        "sw s11, 4 * 29(%0)\n"
+        "sw sp, 4 * 30(%0)\n"
+
+        "lw ra, 4 * 0(%1)\n"
+        "lw gp, 4 * 1(%1)\n"
+        "lw tp, 4 * 2(%1)\n"
+        "lw t0, 4 * 3(%1)\n"
+        "lw t1, 4 * 4(%1)\n"
+        "lw t2, 4 * 5(%1)\n"
+        "lw t3, 4 * 6(%1)\n"
+        "lw t4, 4 * 7(%1)\n"
+        "lw t5, 4 * 8(%1)\n"
+        "lw t6, 4 * 9(%1)\n"
+        "lw a0, 4 * 10(%1)\n"
+        "lw a1, 4 * 11(%1)\n"
+        "lw a2, 4 * 12(%1)\n"
+        "lw a3, 4 * 13(%1)\n"
+        "lw a4, 4 * 14(%1)\n"
+        "lw a5, 4 * 15(%1)\n"
+        "lw a6, 4 * 16(%1)\n"
+        "lw a7, 4 * 17(%1)\n"
+        "lw s0, 4 * 18(%1)\n"
+        "lw s1, 4 * 19(%1)\n"
+        "lw s2, 4 * 20(%1)\n"
+        "lw s3, 4 * 21(%1)\n"
+        "lw s4, 4 * 22(%1)\n"
+        "lw s5, 4 * 23(%1)\n"
+        "lw s6, 4 * 24(%1)\n"
+        "lw s7, 4 * 25(%1)\n"
+        "lw s8, 4 * 26(%1)\n"
+        "lw s9, 4 * 27(%1)\n"
+        "lw s10, 4 * 28(%1)\n"
+        "lw s11, 4 * 29(%1)\n"
+        "lw sp, 4 * 30(%1)\n"
+        :
+        : "r" (prev_frame), "r" (next_frame)
+        : "memory"
+    );
+}
+
+void process_a(void) {
+    for (int i = 0; i < 5; i++) {
+        printf("Process A: iteration %d\n", i);
+        for (volatile int j = 0; j < 1000000; j++);
+        yield();
+    }
+    printf("Process A finished\n");
+    process_exit();
+}
+
+void process_b(void) {
+    for (int i = 0; i < 5; i++) {
+        printf("Process B: iteration %d\n", i);
+        for (volatile int j = 0; j < 1000000; j++);
+        yield();
+    }
+    printf("Process B finished\n");
+    process_exit();
+}
+
+void process_c(void) {
+    for (int i = 0; i < 5; i++) {
+        printf("Process C: iteration %d\n", i);
+        for (volatile int j = 0; j < 1000000; j++);
+        yield();
+    }
+    printf("Process C finished\n");
+    process_exit();
+}
+
+static uint8_t heap[HEAP_SIZE];
+static struct mem_block *free_list = NULL;
+
+void memory_init(void) {
+    free_list = (struct mem_block *)heap;
+    free_list->is_free = 1;
+    free_list->size = HEAP_SIZE - sizeof(struct mem_block);
+    free_list->next = NULL;
+    
+    printf("Memory allocator initialized: %d bytes available\n", HEAP_SIZE);
+}
+
+void *kmalloc(size_t size) {
+    if (size == 0) return NULL;
+    
+    size = (size + 7) & ~7;
+    
+    struct mem_block *current = free_list;
+    struct mem_block *prev = NULL;
+    
+    while (current) {
+        if (current->is_free && current->size >= size) {
+            if (current->size > size + sizeof(struct mem_block)) {
+                struct mem_block *new_block = (struct mem_block *)((uint8_t *)current + sizeof(struct mem_block) + size);
+                new_block->is_free = 1;
+                new_block->size = current->size - size - sizeof(struct mem_block);
+                new_block->next = current->next;
+                
+                current->size = size;
+                current->next = new_block;
+            }
+            
+            current->is_free = 0;
+            return (uint8_t *)current + sizeof(struct mem_block);
+        }
+        prev = current;
+        current = current->next;
+    }
+    
+    printf("kmalloc failed: no suitable block found\n");
+    return NULL;
+}
+
+void kfree(void *ptr) {
+    if (!ptr) return;
+    
+    struct mem_block *block = (struct mem_block *)((uint8_t *)ptr - sizeof(struct mem_block));
+    block->is_free = 1;
+    
+    struct mem_block *current = free_list;
+    while (current && current->next) {
+        if (current->is_free && current->next->is_free && 
+            (uint8_t *)current + sizeof(struct mem_block) + current->size == (uint8_t *)current->next) {
+            current->size += sizeof(struct mem_block) + current->next->size;
+            current->next = current->next->next;
+        }
+        current = current->next;
+    }
+}
+
+void print_memory_stats(void) {
+    struct mem_block *current = free_list;
+    int total_free = 0, total_used = 0, blocks = 0;
+    
+    while (current) {
+        blocks++;
+        if (current->is_free) {
+            total_free += current->size;
+        } else {
+            total_used += current->size;
+        }
+        current = current->next;
+    }
+    
+    printf("Memory stats: %d blocks, %d bytes free, %d bytes used\n", 
+           blocks, total_free, total_used);
+}
+
+void test_memory_allocation(void) {
+    printf("\n=== Memory Allocation Test ===\n");
+    
+    void *ptr1 = kmalloc(64);
+    printf("Allocated 64 bytes at %p\n", ptr1);
+    print_memory_stats();
+    
+    void *ptr2 = kmalloc(128);
+    printf("Allocated 128 bytes at %p\n", ptr2);
+    print_memory_stats();
+    
+    void *ptr3 = kmalloc(256);
+    printf("Allocated 256 bytes at %p\n", ptr3);
+    print_memory_stats();
+    
+    kfree(ptr2);
+    printf("Freed 128 byte block\n");
+    print_memory_stats();
+    
+    void *ptr4 = kmalloc(100);
+    printf("Allocated 100 bytes at %p\n", ptr4);
+    print_memory_stats();
+    
+    kfree(ptr1);
+    kfree(ptr3);
+    kfree(ptr4);
+    printf("Freed all remaining blocks\n");
+    print_memory_stats();
+}
+
+static struct filesystem fs;
+
+int strcmp(const char *s1, const char *s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(unsigned char*)s1 - *(unsigned char*)s2;
+}
+
+int strlen(const char *s) {
+    int len = 0;
+    while (*s++) len++;
+    return len;
+}
+
+void strcpy(char *dest, const char *src) {
+    while (*src) {
+        *dest++ = *src++;
+    }
+    *dest = '\0';
+}
+
+void fs_init(void) {
+    for (int i = 0; i < MAX_FILES; i++) {
+        fs.files[i].is_used = 0;
+        fs.files[i].data = NULL;
+        fs.files[i].size = 0;
+    }
+    fs.file_count = 0;
+    printf("Filesystem initialized: %d file slots available\n", MAX_FILES);
+}
+
+int fs_create(const char *filename, size_t size) {
+    if (size > MAX_FILESIZE) {
+        printf("File size too large: %d bytes (max: %d)\n", (int)size, MAX_FILESIZE);
+        return -1;
+    }
+    
+    if (fs_exists(filename)) {
+        printf("File '%s' already exists\n", filename);
+        return -1;
+    }
+    
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (!fs.files[i].is_used) {
+            strcpy(fs.files[i].name, filename);
+            fs.files[i].data = (uint8_t *)kmalloc(size);
+            if (!fs.files[i].data) {
+                printf("Failed to allocate memory for file '%s'\n", filename);
+                return -1;
+            }
+            fs.files[i].size = size;
+            fs.files[i].is_used = 1;
+            fs.file_count++;
+            printf("Created file '%s' (%d bytes)\n", filename, (int)size);
+            return i;
+        }
+    }
+    printf("No free file slots available\n");
+    return -1;
+}
+
+int fs_write(const char *filename, const void *data, size_t size) {
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (fs.files[i].is_used && strcmp(fs.files[i].name, filename) == 0) {
+            if (size > fs.files[i].size) {
+                printf("Write size too large for file '%s'\n", filename);
+                return -1;
+            }
+            
+            for (size_t j = 0; j < size; j++) {
+                fs.files[i].data[j] = ((const uint8_t *)data)[j];
+            }
+            
+            printf("Wrote %d bytes to file '%s'\n", (int)size, filename);
+            return 0;
+        }
+    }
+    printf("File '%s' not found\n", filename);
+    return -1;
+}
+
+int fs_read(const char *filename, void *buffer, size_t size) {
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (fs.files[i].is_used && strcmp(fs.files[i].name, filename) == 0) {
+            size_t read_size = (size < fs.files[i].size) ? size : fs.files[i].size;
+            
+            for (size_t j = 0; j < read_size; j++) {
+                ((uint8_t *)buffer)[j] = fs.files[i].data[j];
+            }
+            
+            printf("Read %d bytes from file '%s'\n", (int)read_size, filename);
+            return read_size;
+        }
+    }
+    printf("File '%s' not found\n", filename);
+    return -1;
+}
+
+int fs_delete(const char *filename) {
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (fs.files[i].is_used && strcmp(fs.files[i].name, filename) == 0) {
+            kfree(fs.files[i].data);
+            fs.files[i].is_used = 0;
+            fs.files[i].data = NULL;
+            fs.files[i].size = 0;
+            fs.file_count--;
+            printf("Deleted file '%s'\n", filename);
+            return 0;
+        }
+    }
+    printf("File '%s' not found\n", filename);
+    return -1;
+}
+
+void fs_list(void) {
+    printf("\n=== File System Listing ===\n");
+    printf("Files: %d/%d\n", fs.file_count, MAX_FILES);
+    
+    if (fs.file_count == 0) {
+        printf("No files in filesystem\n");
+        return;
+    }
+    
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (fs.files[i].is_used) {
+            printf("  %s (%d bytes)\n", fs.files[i].name, (int)fs.files[i].size);
+        }
+    }
+}
+
+int fs_exists(const char *filename) {
+    for (int i = 0; i < MAX_FILES; i++) {
+        if (fs.files[i].is_used && strcmp(fs.files[i].name, filename) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+void test_filesystem(void) {
+    printf("\n=== File System Test ===\n");
+    
+    fs_create("fru1tworld.txt", 512);
+    fs_create("fru1tworld_delete_test.txt", 256);
+    
+    fs_list();
+    
+    const char *fru1tworld_content = "happy cat";
+    fs_write("fru1tworld.txt", fru1tworld_content, strlen(fru1tworld_content) + 1);
+    
+    const char *delete_test_content = "This file will be deleted to test deletion functionality.";
+    fs_write("fru1tworld_delete_test.txt", delete_test_content, strlen(delete_test_content) + 1);
+    
+    char buffer[512];
+    int bytes_read = fs_read("fru1tworld.txt", buffer, sizeof(buffer));
+    if (bytes_read > 0) {
+        printf("Content of fru1tworld.txt: %s\n", buffer);
+    }
+    
+    bytes_read = fs_read("fru1tworld_delete_test.txt", buffer, sizeof(buffer));
+    if (bytes_read > 0) {
+        printf("Content of fru1tworld_delete_test.txt: %s\n", buffer);
+    }
+    
+    fs_delete("fru1tworld_delete_test.txt");
+    
+    fs_list();
+    
+    print_memory_stats();
+}
+
 void kernel_main(void) {
     memset(bss, 0, (size_t) bss_end - (size_t) bss);
-    paddr_t paddr0 = alloc_pages(2);
-    paddr_t paddr1 = alloc_pages(1);
-    printf("alloc_pages test: paddr0=%x\n", paddr0);
-    printf("alloc_pages test: paddr1=%x\n", paddr1);
-
-    PANIC("booted!");
+    
+    printf("Initializing memory allocator...\n");
+    memory_init();
+    
+    printf("Initializing filesystem...\n");
+    fs_init();
+    
+    printf("Testing filesystem...\n");
+    test_filesystem();
+    
+    printf("Kernel completed successfully!\n");
+    
+    while (1) {
+        __asm__ __volatile__("wfi");
+    }
 }

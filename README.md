@@ -13,9 +13,11 @@ This is my implementation of the operating system tutorial from [operating-syste
 - ✅ **Trap Handling**: Exception and interrupt handling system
 - ✅ **PANIC System**: Error handling with proper halt mechanism
 - ✅ **Printf Support**: Formatted output for debugging
-- 🚧 **Process Management**: (In progress)
+- ✅ **CPU Scheduling**: Round-robin scheduler with process management
+- ✅ **Dynamic Memory Allocation**: Heap allocator with kmalloc/kfree
+- ✅ **File System**: Simple in-memory filesystem with file operations
 - ⏳ **System Calls**: (Planned)
-- ⏳ **File System**: (Planned)
+- ⏳ **Virtual Memory**: (Planned)
 
 ## Prerequisites
 
@@ -165,36 +167,150 @@ OpenSBI v1.5.1
 ...
 [OpenSBI boot information]
 ...
-alloc_pages test: paddr0=80201000
-alloc_pages test: paddr1=80203000
-PANIC: kernel.c:153: booted!
+Initializing memory allocator...
+Memory allocator initialized: 1048576 bytes available
+Initializing filesystem...
+Filesystem initialized: 32 file slots available
+Testing filesystem...
+
+=== File System Test ===
+Created file 'fru1tworld.txt' (512 bytes)
+Created file 'fru1tworld_delete_test.txt' (256 bytes)
+
+=== File System Listing ===
+Files: 2/32
+  fru1tworld.txt (512 bytes)
+  fru1tworld_delete_test.txt (256 bytes)
+Wrote 10 bytes to file 'fru1tworld.txt'
+Wrote 58 bytes to file 'fru1tworld_delete_test.txt'
+Read 512 bytes from file 'fru1tworld.txt'
+Content of fru1tworld.txt: happy cat
+Read 256 bytes from file 'fru1tworld_delete_test.txt'
+Content of fru1tworld_delete_test.txt: This file will be deleted to test deletion functionality.
+Deleted file 'fru1tworld_delete_test.txt'
+
+=== File System Listing ===
+Files: 1/32
+  fru1tworld.txt (512 bytes)
+Memory stats: 2 blocks, 1048040 bytes free, 512 bytes used
+Kernel completed successfully!
 ```
 
-The kernel will halt after displaying the PANIC message, which indicates successful boot and memory allocation test.
+The kernel demonstrates successful memory allocation, file system operations, and proper cleanup.
 
 ## Development
 
-### Following the Tutorial
+### Features Implemented
 
-This implementation follows the chapter progression from the original tutorial:
+This OS includes the following key components:
 
-1. **Hello World**: Basic bootloader and printf functionality ✅
-2. **Exception Handling**: Trap handlers and PANIC system ✅
-3. **Memory Management**: Physical page allocator ✅
-4. **Process Management**: User processes and context switching 🚧
-5. **System Calls**: Process management syscalls ⏳
-6. **Paging**: Virtual memory management ⏳
-7. **File System**: Basic file operations ⏳
-8. **Command Shell**: Interactive user interface ⏳
+#### 1. CPU Scheduling (Round-Robin)
+```c
+// Process states
+#define PROC_UNUSED   0
+#define PROC_READY    1
+#define PROC_RUNNING  2
+#define PROC_BLOCKED  3
+
+struct process {
+    int pid;
+    int state;
+    vaddr_t sp;
+    uint32_t *page_table; 
+    uint8_t stack[STACK_SIZE];
+    struct trap_frame *trap_frame;
+};
+
+// Scheduler functions
+void scheduler_init(void);
+void schedule(void);
+struct process *create_process(void (*entry_point)(void));
+void yield(void);
+void process_exit(void);
+void context_switch(struct process *prev, struct process *next);
+```
+
+**Features:**
+- Process creation and termination
+- Round-robin scheduling algorithm
+- Context switching with full register preservation
+- Process state management (UNUSED, READY, RUNNING, BLOCKED)
+- Support for up to 8 concurrent processes
+
+#### 2. Dynamic Memory Allocation
+```c
+// Memory allocator structures
+struct mem_block {
+    int is_free;
+    size_t size;
+    struct mem_block *next;
+};
+
+// Allocator functions
+void memory_init(void);
+void *kmalloc(size_t size);
+void kfree(void *ptr);
+void print_memory_stats(void);
+```
+
+**Features:**
+- 1MB heap space for dynamic allocation
+- First-fit allocation algorithm
+- Block splitting and coalescing
+- Memory leak detection and statistics
+- 8-byte aligned allocations
+
+#### 3. Simple File System
+```c
+// File system structures
+struct file {
+    char name[MAX_FILENAME];
+    uint8_t *data;
+    size_t size;
+    int is_used;
+};
+
+struct filesystem {
+    struct file files[MAX_FILES];
+    int file_count;
+};
+
+// File system functions
+void fs_init(void);
+int fs_create(const char *filename, size_t size);
+int fs_write(const char *filename, const void *data, size_t size);
+int fs_read(const char *filename, void *buffer, size_t size);
+int fs_delete(const char *filename);
+void fs_list(void);
+int fs_exists(const char *filename);
+```
+
+**Features:**
+- In-memory file system with 32 file slots
+- File creation, reading, writing, and deletion
+- Directory listing functionality
+- File existence checking
+- Integration with dynamic memory allocator
+- Maximum file size of 1KB per file
+
+### Development Branches
+
+The project is organized into feature branches:
+
+- `main`: Base kernel implementation
+- `cpu-scheduling`: Round-robin process scheduler
+- `memory-allocator`: Dynamic memory allocation system
+- `simple-filesystem`: In-memory file system implementation
 
 ### Adding Features
 
-When extending beyond the tutorial:
+When extending the OS:
 
 1. **System Calls**: Extend `handle_syscall()` in `kernel.c`
-2. **Memory Management**: Modify `alloc_pages()` or add new allocators
-3. **Device Drivers**: Add hardware abstraction in new source files
-4. **Process Management**: Implement scheduling and process structures
+2. **Memory Management**: Modify allocators or add virtual memory
+3. **Device Drivers**: Add hardware abstraction layers
+4. **Process Management**: Enhance scheduling algorithms
+5. **File System**: Add persistent storage support
 
 ### Debugging
 

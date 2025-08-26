@@ -1,6 +1,8 @@
 #pragma once
 #include "common.h"
 
+#define NULL ((void*)0)
+
 typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int uint32_t;
@@ -18,12 +20,22 @@ typedef uint32_t size_t;
 
 #define SCAUSE_ECALL 8
 
+#define PROC_UNUSED   0
+#define PROC_READY    1
+#define PROC_RUNNING  2
+#define PROC_BLOCKED  3
+
+#define MAX_PROCESSES 8
+#define STACK_SIZE 8192
+#define TIME_SLICE 10
+
 struct process {
     int pid;
     int state;
     vaddr_t sp;
     uint32_t *page_table; 
-    uint8_t stack[8192];
+    uint8_t stack[STACK_SIZE];
+    struct trap_frame *trap_frame;
 };
 
 struct trap_frame {
@@ -59,3 +71,52 @@ struct sbiret {
 
 void *memset(void *s, int c, size_t n);
 void handle_syscall(struct trap_frame *f);
+
+extern struct process processes[MAX_PROCESSES];
+extern struct process *current_proc;
+
+void scheduler_init(void);
+void schedule(void);
+struct process *create_process(void (*entry_point)(void));
+void yield(void);
+void process_exit(void);
+void context_switch(struct process *prev, struct process *next);
+
+#define HEAP_SIZE (1024 * 1024)
+#define BLOCK_SIZE 32
+#define NUM_BLOCKS (HEAP_SIZE / BLOCK_SIZE)
+
+struct mem_block {
+    int is_free;
+    size_t size;
+    struct mem_block *next;
+};
+
+void memory_init(void);
+void *kmalloc(size_t size);
+void kfree(void *ptr);
+void print_memory_stats(void);
+
+#define MAX_FILES 32
+#define MAX_FILENAME 64
+#define MAX_FILESIZE 1024
+
+struct file {
+    char name[MAX_FILENAME];
+    uint8_t *data;
+    size_t size;
+    int is_used;
+};
+
+struct filesystem {
+    struct file files[MAX_FILES];
+    int file_count;
+};
+
+void fs_init(void);
+int fs_create(const char *filename, size_t size);
+int fs_write(const char *filename, const void *data, size_t size);
+int fs_read(const char *filename, void *buffer, size_t size);
+int fs_delete(const char *filename);
+void fs_list(void);
+int fs_exists(const char *filename);
