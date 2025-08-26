@@ -617,6 +617,222 @@ void test_filesystem(void) {
     print_memory_stats();
 }
 
+static struct shell_state shell;
+
+int str_to_int(const char *str) {
+    int result = 0;
+    while (*str >= '0' && *str <= '9') {
+        result = result * 10 + (*str - '0');
+        str++;
+    }
+    return result;
+}
+
+void shell_init(void) {
+    shell.buffer_pos = 0;
+    shell.running = 1;
+    for (int i = 0; i < SHELL_BUFFER_SIZE; i++) {
+        shell.input_buffer[i] = '\0';
+    }
+}
+
+void shell_print_prompt(void) {
+    printf("fru1t-os> ");
+}
+
+int shell_tokenize(const char *input, char *args[], int max_args) {
+    int argc = 0;
+    int i = 0;
+    int arg_start = -1;
+    
+    static char token_buffer[SHELL_BUFFER_SIZE];
+    int token_pos = 0;
+    
+    while (input[i] != '\0' && argc < max_args) {
+        if (input[i] == ' ' || input[i] == '\t') {
+            if (arg_start != -1) {
+                token_buffer[token_pos] = '\0';
+                args[argc] = (char *)kmalloc(token_pos + 1);
+                strcpy(args[argc], token_buffer);
+                argc++;
+                arg_start = -1;
+                token_pos = 0;
+            }
+        } else {
+            if (arg_start == -1) {
+                arg_start = i;
+            }
+            token_buffer[token_pos++] = input[i];
+        }
+        i++;
+    }
+    
+    if (arg_start != -1 && argc < max_args) {
+        token_buffer[token_pos] = '\0';
+        args[argc] = (char *)kmalloc(token_pos + 1);
+        strcpy(args[argc], token_buffer);
+        argc++;
+    }
+    
+    return argc;
+}
+
+void shell_execute_command(const char *cmd, char *args[], int argc) {
+    if (strcmp(cmd, "help") == 0) {
+        cmd_help();
+    } else if (strcmp(cmd, "ls") == 0) {
+        cmd_ls();
+    } else if (strcmp(cmd, "cat") == 0) {
+        if (argc > 1) {
+            cmd_cat(args[1]);
+        } else {
+            printf("Usage: cat <filename>\n");
+        }
+    } else if (strcmp(cmd, "create") == 0) {
+        if (argc > 2) {
+            cmd_create(args[1], args[2]);
+        } else {
+            printf("Usage: create <filename> <size>\n");
+        }
+    } else if (strcmp(cmd, "delete") == 0) {
+        if (argc > 1) {
+            cmd_delete(args[1]);
+        } else {
+            printf("Usage: delete <filename>\n");
+        }
+    } else if (strcmp(cmd, "memstat") == 0) {
+        cmd_memstat();
+    } else if (strcmp(cmd, "clear") == 0) {
+        cmd_clear();
+    } else if (strcmp(cmd, "echo") == 0) {
+        cmd_echo(args, argc);
+    } else if (strcmp(cmd, "exit") == 0) {
+        shell.running = 0;
+        printf("Goodbye!\n");
+    } else {
+        printf("Unknown command: %s\n", cmd);
+        printf("Type 'help' for available commands\n");
+    }
+}
+
+void shell_parse_command(const char *input) {
+    char *args[MAX_ARGS];
+    int argc = shell_tokenize(input, args, MAX_ARGS);
+    
+    if (argc > 0) {
+        shell_execute_command(args[0], args, argc);
+        
+        for (int i = 0; i < argc; i++) {
+            kfree(args[i]);
+        }
+    }
+}
+
+void cmd_help(void) {
+    printf("\n=== Fru1t OS Shell Commands ===\n");
+    printf("help          - Show this help message\n");
+    printf("ls            - List files in filesystem\n");
+    printf("cat <file>    - Display file contents\n");
+    printf("create <file> <size> - Create new file\n");
+    printf("delete <file> - Delete file\n");
+    printf("echo [args]   - Print arguments\n");
+    printf("memstat       - Show memory statistics\n");
+    printf("clear         - Clear screen\n");
+    printf("exit          - Exit shell\n");
+    printf("\n");
+}
+
+void cmd_ls(void) {
+    fs_list();
+}
+
+void cmd_cat(char *filename) {
+    char buffer[MAX_FILESIZE];
+    int bytes_read = fs_read(filename, buffer, MAX_FILESIZE);
+    if (bytes_read > 0) {
+        printf("Content of %s:\n", filename);
+        for (int i = 0; i < bytes_read && buffer[i] != '\0'; i++) {
+            putchar(buffer[i]);
+        }
+        printf("\n");
+    }
+}
+
+void cmd_create(char *filename, char *size_str) {
+    int size = str_to_int(size_str);
+    if (size <= 0 || size > MAX_FILESIZE) {
+        printf("Invalid size. Must be 1-%d bytes\n", MAX_FILESIZE);
+        return;
+    }
+    fs_create(filename, size);
+}
+
+void cmd_delete(char *filename) {
+    fs_delete(filename);
+}
+
+void cmd_memstat(void) {
+    print_memory_stats();
+}
+
+void cmd_clear(void) {
+    printf("\033[2J\033[H");
+}
+
+void cmd_echo(char *args[], int argc) {
+    for (int i = 1; i < argc; i++) {
+        printf("%s", args[i]);
+        if (i < argc - 1) printf(" ");
+    }
+    printf("\n");
+}
+
+void shell_run(void) {
+    printf("\n=== Welcome to Fru1t OS Shell ===\n");
+    printf("Type 'help' for available commands\n\n");
+    printf("(Note: Interactive input not implemented yet)\n");
+}
+
+void shell_demo(void) {
+    printf("\n=== Fru1t OS Shell Demo ===\n");
+    printf("(Simulating user commands since keyboard input not implemented)\n\n");
+    
+    shell_init();
+    
+    printf("fru1t-os> help\n");
+    cmd_help();
+    
+    printf("fru1t-os> ls\n");
+    cmd_ls();
+    
+    printf("fru1t-os> cat welcome.txt\n");
+    cmd_cat("welcome.txt");
+    
+    printf("fru1t-os> create test.txt 128\n");
+    cmd_create("test.txt", "128");
+    
+    printf("fru1t-os> echo Hello Fru1t OS!\n");
+    char *echo_args[] = {"echo", "Hello", "Fru1t", "OS!"};
+    cmd_echo(echo_args, 4);
+    
+    printf("fru1t-os> ls\n");
+    cmd_ls();
+    
+    printf("fru1t-os> memstat\n");
+    cmd_memstat();
+    
+    printf("fru1t-os> delete test.txt\n");
+    cmd_delete("test.txt");
+    
+    printf("fru1t-os> ls\n");
+    cmd_ls();
+    
+    printf("fru1t-os> exit\n");
+    printf("Goodbye!\n");
+    
+    printf("\n=== Shell Demo Complete ===\n");
+}
+
 void kernel_main(void) {
     memset(bss, 0, (size_t) bss_end - (size_t) bss);
     
@@ -626,8 +842,16 @@ void kernel_main(void) {
     printf("Initializing filesystem...\n");
     fs_init();
     
-    printf("Testing filesystem...\n");
-    test_filesystem();
+    printf("Creating sample files...\n");
+    fs_create("welcome.txt", 256);
+    const char *welcome_msg = "Welcome to Fru1t OS!";
+    fs_write("welcome.txt", welcome_msg, strlen(welcome_msg) + 1);
+    
+    fs_create("readme.txt", 512);
+    const char *readme_msg = "This is a simple operating system with basic shell functionality.";
+    fs_write("readme.txt", readme_msg, strlen(readme_msg) + 1);
+    
+    shell_demo();
     
     printf("Kernel completed successfully!\n");
     

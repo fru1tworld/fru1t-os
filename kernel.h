@@ -120,3 +120,28 @@ int fs_read(const char *filename, void *buffer, size_t size);
 int fs_delete(const char *filename);
 void fs_list(void);
 int fs_exists(const char *filename);
+
+#define SHELL_BUFFER_SIZE 256
+#define MAX_ARGS 10
+
+struct shell_state {
+    char input_buffer[SHELL_BUFFER_SIZE];
+    int buffer_pos;
+    int running;
+};
+
+void shell_init(void);
+void shell_run(void);
+void shell_parse_command(const char *input);
+void shell_execute_command(const char *cmd, char *args[], int argc);
+int shell_tokenize(const char *input, char *args[], int max_args);
+void shell_print_prompt(void);
+
+void cmd_help(void);
+void cmd_ls(void);
+void cmd_cat(char *filename);
+void cmd_create(char *filename, char *size_str);
+void cmd_delete(char *filename);
+void cmd_memstat(void);
+void cmd_clear(void);
+void cmd_echo(char *args[], int argc);
