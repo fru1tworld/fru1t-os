@@ -133,7 +133,15 @@ void handle_trap(struct trap_frame *f) {
     uint32_t scause = READ_CSR(scause);
     uint32_t stval = READ_CSR(stval);
     uint32_t user_pc = READ_CSR(sepc);
-    if (scause == SCAUSE_ECALL) {
+    
+    if (scause & SCAUSE_INTERRUPT) {
+        uint32_t interrupt_type = scause & 0x7FFFFFFF;
+        if (interrupt_type == SCAUSE_EXTERNAL_INTERRUPT) {
+            handle_uart_interrupt();
+        } else {
+            PANIC("unexpected interrupt scause=%x\n", scause);
+        }
+    } else if (scause == SCAUSE_ECALL) {
         handle_syscall(f);
         user_pc += 4;
     } else {
@@ -790,7 +798,136 @@ void cmd_echo(char *args[], int argc) {
 void shell_run(void) {
     printf("\n=== Welcome to Fru1t OS Shell ===\n");
     printf("Type 'help' for available commands\n\n");
-    printf("(Note: Interactive input not implemented yet)\n");
+    
+    while (shell.running) {
+        shell_print_prompt();
+        
+        char c;
+        shell.buffer_pos = 0;
+        
+        while (1) {
+            c = getchar_blocking();
+            
+            if (c == '\n' || c == '\r') {
+                shell.input_buffer[shell.buffer_pos] = '\0';
+                printf("\n");
+                if (shell.buffer_pos > 0) {
+                    shell_parse_command(shell.input_buffer);
+                }
+                break;
+            } else if (c == '\b' || c == 127) {
+                if (shell.buffer_pos > 0) {
+                    shell.buffer_pos--;
+                    printf("\b \b");
+                }
+            } else if (c >= 32 && c < 127 && shell.buffer_pos < SHELL_BUFFER_SIZE - 1) {
+                shell.input_buffer[shell.buffer_pos++] = c;
+                putchar(c);
+            }
+        }
+    }
+}
+
+static struct input_buffer input_buf;
+
+uint8_t uart_read_reg(uint32_t offset) {
+    return *(volatile uint8_t*)(UART_BASE + offset);
+}
+
+void uart_write_reg(uint32_t offset, uint8_t value) {
+    *(volatile uint8_t*)(UART_BASE + offset) = value;
+}
+
+void uart_init(void) {
+    uart_write_reg(UART_LCR, 0x03);
+    
+    printf("UART initialized\n");
+}
+
+void uart_enable_interrupts(void) {
+    uint32_t sie_val;
+    __asm__ __volatile__("csrr %0, sie" : "=r"(sie_val));
+    sie_val |= 0x200;
+    __asm__ __volatile__("csrw sie, %0" : : "r"(sie_val));
+    __asm__ __volatile__("csrsi sstatus, 0x2"); 
+}
+
+int uart_rx_ready(void) {
+    return uart_read_reg(UART_LSR) & UART_LSR_RX_READY;
+}
+
+char uart_getchar(void) {
+    while (!uart_rx_ready()) {
+        __asm__ __volatile__("wfi");
+    }
+    return uart_read_reg(UART_RHR);
+}
+
+void uart_putchar(char c) {
+    while (!(uart_read_reg(UART_LSR) & 0x20)) {
+    }
+    uart_write_reg(UART_THR, c);
+}
+
+void handle_uart_interrupt(void) {
+    if (uart_rx_ready()) {
+        char c = uart_read_reg(UART_RHR);
+        input_buffer_put(c);
+    }
+}
+
+void input_buffer_init(void) {
+    input_buf.write_pos = 0;
+    input_buf.read_pos = 0;
+    input_buf.count = 0;
+}
+
+void input_buffer_put(char c) {
+    if (input_buf.count < INPUT_BUFFER_SIZE) {
+        input_buf.buffer[input_buf.write_pos] = c;
+        input_buf.write_pos = (input_buf.write_pos + 1) % INPUT_BUFFER_SIZE;
+        input_buf.count++;
+    }
+}
+
+char input_buffer_get(void) {
+    if (input_buf.count > 0) {
+        char c = input_buf.buffer[input_buf.read_pos];
+        input_buf.read_pos = (input_buf.read_pos + 1) % INPUT_BUFFER_SIZE;
+        input_buf.count--;
+        return c;
+    }
+    return 0;
+}
+
+int input_buffer_available(void) {
+    return input_buf.count > 0;
+}
+
+int sbi_console_getchar(void) {
+    struct sbiret ret = sbi_call(0, 0, 0, 0, 0, 0, 1, 0x01);
+    return (int)ret.value;
+}
+
+char getchar_blocking(void) {
+    static int first_time = 1;
+    if (first_time) {
+        printf("Waiting for keyboard input... (try typing!)\n");
+        first_time = 0;
+    }
+    
+    while (1) {
+        int c = sbi_console_getchar();
+        if (c != -1 && c != 0) {
+            return (char)c;
+        }
+        
+        if (uart_rx_ready()) {
+            return uart_read_reg(UART_RHR);
+        }
+        
+        for (volatile int i = 0; i < 1000; i++);
+    }
 }
 
 void shell_demo(void) {
@@ -842,6 +979,11 @@ void kernel_main(void) {
     printf("Initializing filesystem...\n");
     fs_init();
     
+    printf("Initializing UART and keyboard interrupts...\n");
+    uart_init();
+    input_buffer_init();
+    uart_enable_interrupts();
+    
     printf("Creating sample files...\n");
     fs_create("welcome.txt", 256);
     const char *welcome_msg = "Welcome to Fru1t OS!";
@@ -851,9 +993,49 @@ void kernel_main(void) {
     const char *readme_msg = "This is a simple operating system with basic shell functionality.";
     fs_write("readme.txt", readme_msg, strlen(readme_msg) + 1);
     
+    printf("Starting shell demo (keyboard input will be simulated)...\n");
     shell_demo();
     
-    printf("Kernel completed successfully!\n");
+    printf("\n=== Interactive Shell (with simulated keyboard input) ===\n");
+    printf("This demonstrates how the shell would work with real keyboard input\n\n");
+    
+    const char *demo_commands[] = {
+        "help",
+        "ls", 
+        "cat welcome.txt",
+        "create demo.txt 64",
+        "echo This is a demo!",
+        "ls",
+        "memstat", 
+        "delete demo.txt",
+        "ls",
+        NULL
+    };
+    
+    shell_init();
+    printf("=== Welcome to Fru1t OS Shell ===\n");
+    printf("Type 'help' for available commands\n\n");
+    
+    for (int i = 0; demo_commands[i] != NULL; i++) {
+        printf("fru1t-os> %s\n", demo_commands[i]);
+        shell_parse_command(demo_commands[i]);
+        printf("\n");
+        
+        for (volatile int j = 0; j < 5000000; j++);
+    }
+    
+    printf("fru1t-os> exit\n");
+    printf("Shell demo completed!\n");
+    
+    printf("\n=== Real Keyboard Input Test ===\n");
+    printf("Now testing real keyboard input. Try typing commands!\n");
+    printf("Available commands: help, ls, cat, create, delete, echo, memstat, clear, exit\n");
+    printf("Press 'exit' to quit.\n\n");
+    
+    shell_init();
+    shell_run();
+    
+    printf("Shell exited. Kernel completed successfully!\n");
     
     while (1) {
         __asm__ __volatile__("wfi");

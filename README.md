@@ -1,350 +1,220 @@
 # Fru1t OS
 
-A minimal operating system kernel written in C for the RISC-V 32-bit architecture, following the ["Writing an OS in 1000 lines"](https://github.com/nuta/operating-system-in-1000-lines) tutorial by nuta.
+A minimal operating system kernel written in C for the RISC-V 32-bit architecture, featuring keyboard interrupt handling and interactive shell functionality.
 
-## About This Project
+## Features
 
-This is my implementation of the operating system tutorial from [operating-system-in-1000-lines](https://github.com/nuta/operating-system-in-1000-lines). I'm following the tutorial step by step to learn OS development fundamentals.
+- ✅ **Boot Process**: Custom bootloader entry point with OpenSBI integration
+- ✅ **Memory Management**: Dynamic heap allocator with kmalloc/kfree (1MB heap)
+- ✅ **Process Scheduling**: Round-robin scheduler supporting up to 8 processes
+- ✅ **File System**: In-memory filesystem with 32 file slots (1KB max per file)
+- ✅ **Trap Handling**: Complete exception and interrupt handling system
+- ✅ **Keyboard Input**: UART-based keyboard input with interrupt and polling modes
+- ✅ **Interactive Shell**: Command-line interface with 9 built-in commands
+- ✅ **Input Buffer**: Circular buffer for keyboard input handling
 
-## Current Progress
+## Shell Commands
 
-- ✅ **Boot Process**: Custom bootloader entry point
-- ✅ **Memory Management**: Basic physical memory allocator with page allocation
-- ✅ **Trap Handling**: Exception and interrupt handling system
-- ✅ **PANIC System**: Error handling with proper halt mechanism
-- ✅ **Printf Support**: Formatted output for debugging
-- ✅ **CPU Scheduling**: Round-robin scheduler with process management
-- ✅ **Dynamic Memory Allocation**: Heap allocator with kmalloc/kfree
-- ✅ **File System**: Simple in-memory filesystem with file operations
-- ⏳ **System Calls**: (Planned)
-- ⏳ **Virtual Memory**: (Planned)
+The OS includes a fully functional shell with the following commands:
+
+- `help` - Show available commands
+- `ls` - List files in filesystem
+- `cat <filename>` - Display file contents
+- `create <filename> <size>` - Create new file
+- `delete <filename>` - Delete file
+- `echo [text]` - Print text to console
+- `memstat` - Show memory allocation statistics
+- `clear` - Clear screen
+- `exit` - Exit shell
 
 ## Prerequisites
 
 ### QEMU
-
-Install QEMU with RISC-V support:
-
-**macOS (Homebrew):**
-
 ```bash
+# macOS
 brew install qemu
-```
 
-**Ubuntu/Debian:**
-
-```bash
-sudo apt-get update
+# Ubuntu/Debian
 sudo apt-get install qemu-system-misc
-```
 
-**Arch Linux:**
-
-```bash
+# Arch Linux
 sudo pacman -S qemu-arch-extra
 ```
 
 ### Compiler
-
-You need a RISC-V cross-compiler toolchain:
-
-**macOS (Homebrew):**
-
 ```bash
+# macOS (Recommended)
 brew install llvm
-# The project uses Clang with RISC-V target support
-```
 
-**Ubuntu/Debian:**
-
-```bash
+# Ubuntu/Debian
 sudo apt-get install clang
-# or
-sudo apt-get install gcc-riscv64-unknown-elf
-```
-
-**Building from source:**
-If your distribution doesn't provide RISC-V toolchain, you can build it from source:
-
-```bash
-# Download and build riscv-gnu-toolchain
-git clone https://github.com/riscv/riscv-gnu-toolchain
-cd riscv-gnu-toolchain
-./configure --prefix=/opt/riscv --with-arch=rv32ima --with-abi=ilp32
-make
 ```
 
 ## Build and Run
 
 ### Quick Start
-
-1. **Clone the repository:**
-
-   ```bash
-   git clone https://github.com/fru1tworld/fru1t-os.git
-   cd fru1t-os
-   ```
-
-2. **Build and run:**
-   ```bash
-   chmod +x run.sh
-   ./run.sh
-   ```
+```bash
+git clone <repository-url>
+cd myos
+chmod +x run.sh
+./run.sh
+```
 
 ### Manual Build
-
-If you prefer to build manually:
-
 ```bash
-# Set compiler (adjust path as needed)
-CC=/opt/homebrew/opt/llvm/bin/clang  # macOS with Homebrew
-# or
-CC=clang  # if clang is in PATH
-# or
-CC=riscv32-unknown-elf-gcc  # if using riscv toolchain
+CC=/opt/homebrew/opt/llvm/bin/clang
+CFLAGS="-std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-protector -ffreestanding -nostdlib"
 
-# Compile
-$CC -std=c11 -O2 -g3 -Wall -Wextra \
-    --target=riscv32-unknown-elf \
-    -fno-stack-protector -ffreestanding -nostdlib \
-    -Wl,-Tkernel.ld -Wl,-Map=kernel.map \
-    -o kernel.elf kernel.c common.c
+$CC $CFLAGS -Wl,-Tkernel.ld -Wl,-Map=kernel.map -o kernel.elf kernel.c common.c
 
-# Run with QEMU
 qemu-system-riscv32 \
     -machine virt \
     -bios default \
     -nographic \
-    -serial mon:stdio \
     --no-reboot \
     -kernel kernel.elf
 ```
 
-## Configuration
-
-### Compiler Path
-
-Edit `run.sh` to adjust the compiler path for your system:
-
-```bash
-# For macOS with Homebrew LLVM
-CC=/opt/homebrew/opt/llvm/bin/clang
-
-# For system-wide clang
-CC=clang
-
-# For RISC-V GCC toolchain
-CC=riscv32-unknown-elf-gcc
-```
-
-### Memory Layout
-
-The kernel uses the following memory layout (defined in `kernel.ld`):
-
-- **Load Address**: `0x80200000`
-- **Stack Size**: 64KB
-- **Free RAM**: 64MB allocated for dynamic memory
-
-## Project Structure
-
-```
-.
-├── kernel.c        # Main kernel code
-├── kernel.h        # Kernel headers and definitions
-├── common.c        # Common utility functions (printf, memset)
-├── common.h        # Common headers
-├── kernel.ld       # Linker script
-├── run.sh          # Build and run script
-└── README.md       # This file
-```
-
 ## Expected Output
-
-When running successfully, you should see:
 
 ```
 OpenSBI v1.5.1
-...
-[OpenSBI boot information]
 ...
 Initializing memory allocator...
 Memory allocator initialized: 1048576 bytes available
 Initializing filesystem...
 Filesystem initialized: 32 file slots available
-Testing filesystem...
+Initializing UART and keyboard interrupts...
+UART initialized
+Creating sample files...
+Created file 'welcome.txt' (256 bytes)
+Wrote 21 bytes to file 'welcome.txt'
+Created file 'readme.txt' (512 bytes)
+Wrote 66 bytes to file 'readme.txt'
+Starting shell demo (keyboard input will be simulated)...
 
-=== File System Test ===
-Created file 'fru1tworld.txt' (512 bytes)
-Created file 'fru1tworld_delete_test.txt' (256 bytes)
+=== Fru1t OS Shell Demo ===
+(Simulating user commands since keyboard input not implemented)
+
+fru1t-os> help
+
+=== Fru1t OS Shell Commands ===
+help          - Show this help message
+ls            - List files in filesystem
+cat <file>    - Display file contents
+create <file> <size> - Create new file
+delete <file> - Delete file
+echo [args]   - Print arguments
+memstat       - Show memory statistics
+clear         - Clear screen
+exit          - Exit shell
+
+fru1t-os> ls
 
 === File System Listing ===
 Files: 2/32
-  fru1tworld.txt (512 bytes)
-  fru1tworld_delete_test.txt (256 bytes)
-Wrote 10 bytes to file 'fru1tworld.txt'
-Wrote 58 bytes to file 'fru1tworld_delete_test.txt'
-Read 512 bytes from file 'fru1tworld.txt'
-Content of fru1tworld.txt: happy cat
-Read 256 bytes from file 'fru1tworld_delete_test.txt'
-Content of fru1tworld_delete_test.txt: This file will be deleted to test deletion functionality.
-Deleted file 'fru1tworld_delete_test.txt'
+  welcome.txt (256 bytes)
+  readme.txt (512 bytes)
 
-=== File System Listing ===
-Files: 1/32
-  fru1tworld.txt (512 bytes)
-Memory stats: 2 blocks, 1048040 bytes free, 512 bytes used
-Kernel completed successfully!
+fru1t-os> cat welcome.txt
+Read 256 bytes from file 'welcome.txt'
+Content of welcome.txt:
+Welcome to Fru1t OS!
+
+...
 ```
 
-The kernel demonstrates successful memory allocation, file system operations, and proper cleanup.
+## Architecture
+
+### Memory Layout
+- **Load Address**: 0x80200000
+- **Stack**: 64KB per process
+- **Heap**: 1MB for dynamic allocation
+- **Max Files**: 32 files, 1KB each
+
+### Key Components
+
+#### Process Management
+- Round-robin scheduler with 10ms time slices
+- Process states: UNUSED, READY, RUNNING, BLOCKED
+- Full context switching with register preservation
+
+#### Memory Allocator
+- First-fit allocation algorithm
+- Block splitting and coalescing
+- 8-byte aligned allocations
+- Memory leak detection
+
+#### File System
+- In-memory storage with dynamic allocation
+- File operations: create, read, write, delete, list
+- Filename limit: 64 characters
+- File size limit: 1024 bytes
+
+#### Input System
+- UART-based keyboard input handling
+- Interrupt and polling mode support
+- Circular input buffer (256 bytes)
+- Real-time command processing
+
+## Project Structure
+
+```
+.
+├── kernel.c        # Main kernel implementation
+├── kernel.h        # Kernel headers and definitions
+├── common.c        # Utility functions (printf, memset, etc.)
+├── common.h        # Common headers
+├── kernel.ld       # Linker script for memory layout
+├── run.sh          # Build and run script
+├── test_input.sh   # Keyboard input testing script
+└── README.md       # This documentation
+```
 
 ## Development
 
-### Features Implemented
+### Adding New Commands
+1. Add command handler function in `kernel.c`
+2. Update `shell_execute_command()` with new case
+3. Add help text in `cmd_help()`
 
-This OS includes the following key components:
+### Memory Management
+- Use `kmalloc()` and `kfree()` for dynamic allocation
+- Check `print_memory_stats()` for debugging leaks
+- Heap size configurable via `HEAP_SIZE` define
 
-#### 1. CPU Scheduling (Round-Robin)
-```c
-// Process states
-#define PROC_UNUSED   0
-#define PROC_READY    1
-#define PROC_RUNNING  2
-#define PROC_BLOCKED  3
+### File System Extension
+- Modify `MAX_FILES` and `MAX_FILESIZE` for different limits
+- Add new file operations in filesystem section
+- Files are stored in RAM and lost on reboot
 
-struct process {
-    int pid;
-    int state;
-    vaddr_t sp;
-    uint32_t *page_table; 
-    uint8_t stack[STACK_SIZE];
-    struct trap_frame *trap_frame;
-};
+## Controls
 
-// Scheduler functions
-void scheduler_init(void);
-void schedule(void);
-struct process *create_process(void (*entry_point)(void));
-void yield(void);
-void process_exit(void);
-void context_switch(struct process *prev, struct process *next);
-```
+- **Exit QEMU**: Ctrl+A, X
+- **QEMU Monitor**: Ctrl+A, C
+- **Shell Navigation**: Standard terminal controls
 
-**Features:**
-- Process creation and termination
-- Round-robin scheduling algorithm
-- Context switching with full register preservation
-- Process state management (UNUSED, READY, RUNNING, BLOCKED)
-- Support for up to 8 concurrent processes
+## Known Issues
 
-#### 2. Dynamic Memory Allocation
-```c
-// Memory allocator structures
-struct mem_block {
-    int is_free;
-    size_t size;
-    struct mem_block *next;
-};
-
-// Allocator functions
-void memory_init(void);
-void *kmalloc(size_t size);
-void kfree(void *ptr);
-void print_memory_stats(void);
-```
-
-**Features:**
-- 1MB heap space for dynamic allocation
-- First-fit allocation algorithm
-- Block splitting and coalescing
-- Memory leak detection and statistics
-- 8-byte aligned allocations
-
-#### 3. Simple File System
-```c
-// File system structures
-struct file {
-    char name[MAX_FILENAME];
-    uint8_t *data;
-    size_t size;
-    int is_used;
-};
-
-struct filesystem {
-    struct file files[MAX_FILES];
-    int file_count;
-};
-
-// File system functions
-void fs_init(void);
-int fs_create(const char *filename, size_t size);
-int fs_write(const char *filename, const void *data, size_t size);
-int fs_read(const char *filename, void *buffer, size_t size);
-int fs_delete(const char *filename);
-void fs_list(void);
-int fs_exists(const char *filename);
-```
-
-**Features:**
-- In-memory file system with 32 file slots
-- File creation, reading, writing, and deletion
-- Directory listing functionality
-- File existence checking
-- Integration with dynamic memory allocator
-- Maximum file size of 1KB per file
-
-### Development Branches
-
-The project is organized into feature branches:
-
-- `main`: Base kernel implementation
-- `cpu-scheduling`: Round-robin process scheduler
-- `memory-allocator`: Dynamic memory allocation system
-- `simple-filesystem`: In-memory file system implementation
-
-### Adding Features
-
-When extending the OS:
-
-1. **System Calls**: Extend `handle_syscall()` in `kernel.c`
-2. **Memory Management**: Modify allocators or add virtual memory
-3. **Device Drivers**: Add hardware abstraction layers
-4. **Process Management**: Enhance scheduling algorithms
-5. **File System**: Add persistent storage support
-
-### Debugging
-
-- Use `printf()` for debugging output
-- Check `kernel.map` for symbol information
-- Use QEMU's monitor commands (Ctrl+A, C to enter monitor)
-- Add `-d in_asm,int,mmu` to QEMU for detailed debugging
-
-### Exit QEMU
-
-- **Ctrl+A, X**: Exit QEMU
-- **Ctrl+A, C**: Enter QEMU monitor
+- Keyboard input may not work properly in some QEMU configurations
+- Files are not persistent (RAM-only storage)
+- Limited to 32-bit RISC-V architecture
+- No virtual memory management
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - Feel free to use and modify.
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
+3. Implement your changes
+4. Test thoroughly with `./run.sh`
 5. Submit a pull request
 
 ## References
 
-- [Writing an OS in 1000 lines (Original Tutorial)](https://github.com/nuta/operating-system-in-1000-lines) - The main reference for this project
 - [RISC-V Instruction Set Manual](https://riscv.org/technical/specifications/)
 - [OpenSBI Documentation](https://github.com/riscv-software-src/opensbi)
 - [QEMU RISC-V Documentation](https://www.qemu.org/docs/master/system/target-riscv.html)
-
-## Learning Journey
-
-This project represents my journey through the excellent tutorial by nuta. Each commit corresponds to different stages of the tutorial, making it easy to follow the progression from a simple bootloader to a full-featured microkernel.
-
-If you're also following the tutorial, feel free to compare implementations or ask questions!

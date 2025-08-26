@@ -19,6 +19,20 @@ typedef uint32_t vaddr_t;
 typedef uint32_t size_t;
 
 #define SCAUSE_ECALL 8
+#define SCAUSE_INTERRUPT 0x80000000
+#define SCAUSE_EXTERNAL_INTERRUPT 9
+#define SCAUSE_TIMER_INTERRUPT 5
+
+#define UART_BASE 0x10000000
+#define UART_RHR 0
+#define UART_THR 0
+#define UART_IER 1
+#define UART_IIR 2
+#define UART_LCR 3
+#define UART_LSR 5
+
+#define UART_LSR_RX_READY (1 << 0)
+#define UART_IER_RX_ENABLE (1 << 0)
 
 #define PROC_UNUSED   0
 #define PROC_READY    1
@@ -145,3 +159,24 @@ void cmd_delete(char *filename);
 void cmd_memstat(void);
 void cmd_clear(void);
 void cmd_echo(char *args[], int argc);
+
+#define INPUT_BUFFER_SIZE 256
+
+struct input_buffer {
+    char buffer[INPUT_BUFFER_SIZE];
+    int write_pos;
+    int read_pos;
+    int count;
+};
+
+void uart_init(void);
+void uart_enable_interrupts(void);
+char uart_getchar(void);
+void uart_putchar(char c);
+int uart_rx_ready(void);
+void handle_uart_interrupt(void);
+void input_buffer_init(void);
+void input_buffer_put(char c);
+char input_buffer_get(void);
+int input_buffer_available(void);
+char getchar_blocking(void);
