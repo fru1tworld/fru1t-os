@@ -159,6 +159,8 @@ void cmd_delete(char *filename);
 void cmd_memstat(void);
 void cmd_clear(void);
 void cmd_echo(char *args[], int argc);
+void cmd_netstat(void);
+void cmd_ping(char *target);
 
 #define INPUT_BUFFER_SIZE 256
 
@@ -180,3 +182,100 @@ void input_buffer_put(char c);
 char input_buffer_get(void);
 int input_buffer_available(void);
 char getchar_blocking(void);
+
+#define ETHERNET_FRAME_SIZE 1518
+#define IP_PACKET_SIZE 1500
+#define TCP_SEGMENT_SIZE 1460
+#define HTTP_BUFFER_SIZE 2048
+#define MAX_CONNECTIONS 8
+
+struct ethernet_header {
+    uint8_t dest_mac[6];
+    uint8_t src_mac[6];
+    uint16_t ethertype;
+} __attribute__((packed));
+
+struct ip_header {
+    uint8_t version_ihl;
+    uint8_t tos;
+    uint16_t total_length;
+    uint16_t id;
+    uint16_t flags_fragment;
+    uint8_t ttl;
+    uint8_t protocol;
+    uint16_t checksum;
+    uint32_t src_ip;
+    uint32_t dest_ip;
+} __attribute__((packed));
+
+struct tcp_header {
+    uint16_t src_port;
+    uint16_t dest_port;
+    uint32_t seq_num;
+    uint32_t ack_num;
+    uint8_t data_offset_flags;
+    uint8_t flags;
+    uint16_t window_size;
+    uint16_t checksum;
+    uint16_t urgent_ptr;
+} __attribute__((packed));
+
+struct tcp_connection {
+    uint32_t remote_ip;
+    uint16_t remote_port;
+    uint16_t local_port;
+    uint32_t seq_num;
+    uint32_t ack_num;
+    int state;
+    char buffer[TCP_SEGMENT_SIZE];
+    int buffer_len;
+    int is_active;
+};
+
+struct http_request {
+    char method[8];
+    char path[256];
+    char version[16];
+    char headers[1024];
+    char body[1024];
+    int content_length;
+};
+
+struct http_response {
+    int status_code;
+    char status_text[32];
+    char headers[1024];
+    char body[2048];
+    int body_length;
+};
+
+#define TCP_CLOSED 0
+#define TCP_LISTEN 1
+#define TCP_SYN_SENT 2
+#define TCP_SYN_RECEIVED 3
+#define TCP_ESTABLISHED 4
+#define TCP_FIN_WAIT1 5
+#define TCP_FIN_WAIT2 6
+#define TCP_CLOSE_WAIT 7
+#define TCP_CLOSING 8
+#define TCP_LAST_ACK 9
+#define TCP_TIME_WAIT 10
+
+#define TCP_FLAG_FIN 0x01
+#define TCP_FLAG_SYN 0x02
+#define TCP_FLAG_RST 0x04
+#define TCP_FLAG_PSH 0x08
+#define TCP_FLAG_ACK 0x10
+#define TCP_FLAG_URG 0x20
+
+void network_init(void);
+void ethernet_send(const uint8_t *dest_mac, uint16_t ethertype, const void *payload, size_t len);
+void ip_send(uint32_t dest_ip, uint8_t protocol, const void *payload, size_t len);
+void tcp_send(uint32_t dest_ip, uint16_t src_port, uint16_t dest_port, uint32_t seq, uint32_t ack, uint8_t flags, const void *data, size_t len);
+int tcp_listen(uint16_t port);
+struct tcp_connection *tcp_accept(uint16_t port);
+void tcp_close(struct tcp_connection *conn);
+void http_init(void);
+void http_handle_request(struct tcp_connection *conn, const char *request);
+void http_send_response(struct tcp_connection *conn, struct http_response *response);
+void process_network_packets(void);
