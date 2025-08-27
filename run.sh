@@ -7,7 +7,7 @@ CFLAGS="-std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-p
 
 # 커널 빌드
 $CC $CFLAGS -Wl,-Tkernel.ld -Wl,-Map=kernel.map -o kernel.elf \
-    kernel.c common.c
+    kernel.c common.c asm_functions.s
 
 # QEMU 실행
 /opt/homebrew/bin/qemu-system-riscv32 \

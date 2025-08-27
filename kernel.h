@@ -64,18 +64,20 @@ struct sbiret {
     long value;
 };
 
-#define READ_CSR(reg)                                                          \
-    ({                                                                         \
-        unsigned long __tmp;                                                   \
-        __asm__ __volatile__("csrr %0, " #reg : "=r"(__tmp));                  \
-        __tmp;                                                                 \
-    })
+extern struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4, long arg5, long fid, long eid);
+extern void switch_to_user(uint32_t pc, uint32_t sp, uint32_t satp);
+extern uint32_t read_csr_satp(void);
+extern void write_csr_satp(uint32_t value);
+extern uint32_t read_csr_scause(void);
+extern uint32_t read_csr_stval(void);
+extern uint32_t read_csr_sepc(void);
+extern void write_csr_sepc(uint32_t value);
+extern void switch_context(uint32_t **old_sp, uint32_t *new_sp);
+extern void enable_interrupts(void);
+extern void wait_for_interrupt(void);
 
-#define WRITE_CSR(reg, value)                                                  \
-    do {                                                                       \
-        uint32_t __tmp = (value);                                              \
-        __asm__ __volatile__("csrw " #reg ", %0" ::"r"(__tmp));                \
-    } while (0)
+#define READ_CSR(reg) read_csr_##reg()
+#define WRITE_CSR(reg, value) write_csr_##reg(value)
 
 #define PANIC(fmt, ...)                                                        \
     do {                                                                       \
