@@ -736,9 +736,6 @@ void cmd_echo(char *args[], int argc) {
 }
 
 void shell_run(void) {
-    printf("\n=== Welcome to Fru1t OS Shell ===\n");
-    printf("Type 'help' for available commands\n\n");
-    
     while (shell.running) {
         shell_print_prompt();
         
@@ -1221,55 +1218,14 @@ void kernel_main(void) {
     const char *readme_msg = "This is a simple operating system with basic shell functionality.";
     fs_write("readme.txt", readme_msg, strlen(readme_msg) + 1);
     
-    printf("Starting shell demo (keyboard input will be simulated)...\n");
-    shell_demo();
-    
-    printf("\n=== Interactive Shell (with simulated keyboard input) ===\n");
-    printf("This demonstrates how the shell would work with real keyboard input\n\n");
-    
-    const char *demo_commands[] = {
-        "help",
-        "ls", 
-        "cat welcome.txt",
-        "create demo.txt 64",
-        "echo This is a demo!",
-        "ls",
-        "memstat",
-        "netstat",
-        "ping 192.168.1.1",
-        "delete demo.txt",
-        "ls",
-        NULL
-    };
-    
+    printf("Starting interactive shell...\n");
     shell_init();
-    printf("=== Welcome to Fru1t OS Shell ===\n");
-    printf("Type 'help' for available commands\n\n");
-    
-    for (int i = 0; demo_commands[i] != NULL; i++) {
-        printf("fru1t-os> %s\n", demo_commands[i]);
-        shell_parse_command(demo_commands[i]);
-        printf("\n");
-        
-        for (volatile int j = 0; j < 5000000; j++);
-    }
-    
-    printf("fru1t-os> exit\n");
-    printf("Shell demo completed!\n");
-    
-    printf("\n=== TCP/IP & HTTP Server Demo Complete ===\n");
-    printf("Features demonstrated:\n");
-    printf("- Memory management (dynamic allocation)\n");
-    printf("- File system operations\n");
-    printf("- Shell command processing\n");
-    printf("- TCP/IP network stack\n");
-    printf("- HTTP server functionality\n");
-    printf("- UART communication\n");
-    
-    printf("\nKernel completed successfully!\n");
-    printf("Use Ctrl+A, X to exit QEMU\n");
+    printf("\n=== Welcome to Fru1t OS Shell ===\n");
+    printf("Type 'help' for available commands\n");
+    printf("Press Ctrl+A, X to exit QEMU\n\n");
     
     while (1) {
+        shell_run();
         wait_for_interrupt();
     }
 }

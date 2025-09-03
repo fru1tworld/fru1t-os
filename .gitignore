@@ -7,5 +7,4 @@
 *.bin
 *.log
 *.pcap
-*.ld
 test_input.sh
