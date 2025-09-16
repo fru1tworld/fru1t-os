@@ -1,33 +1,37 @@
 # Fru1t OS
 
-A minimal operating system kernel written in C for the RISC-V 32-bit architecture, featuring keyboard interrupt handling and interactive shell functionality.
+RISC-V 32비트 아키텍처용 C언어로 작성된 최소한의 운영체제 커널이다. 키보드 인터럽트 처리와 대화형 셸 기능을 구현했다.
 
-## Features
+## 개발 도움
 
-- ✅ **Boot Process**: Custom bootloader entry point with OpenSBI integration
-- ✅ **Memory Management**: Dynamic heap allocator with kmalloc/kfree (1MB heap)
-- ✅ **Process Scheduling**: Round-robin scheduler supporting up to 8 processes
-- ✅ **File System**: In-memory filesystem with 32 file slots (1KB max per file)
-- ✅ **Trap Handling**: Complete exception and interrupt handling system
-- ✅ **Keyboard Input**: UART-based keyboard input with interrupt and polling modes
-- ✅ **Interactive Shell**: Command-line interface with 9 built-in commands
-- ✅ **Input Buffer**: Circular buffer for keyboard input handling
+이 프로젝트는 Claude AI의 도움을 받아 개발되었으며, 특히 OpenSBI 통합 부분에서 Claude의 지원을 받았다.
 
-## Shell Commands
+## 기능
 
-The OS includes a fully functional shell with the following commands:
+- **부트 프로세스**: OpenSBI 통합이 포함된 커스텀 부트로더 진입점
+- **메모리 관리**: kmalloc/kfree를 사용한 동적 힙 할당자 (1MB 힙)
+- **프로세스 스케줄링**: 최대 8개 프로세스를 지원하는 라운드로빈 스케줄러
+- **파일 시스템**: 32개 파일 슬롯을 가진 인메모리 파일시스템 (파일당 최대 1KB)
+- **트랩 처리**: 완전한 예외 및 인터럽트 처리 시스템
+- **키보드 입력**: 인터럽트 및 폴링 모드를 지원하는 UART 기반 키보드 입력
+- **대화형 셸**: 9개의 내장 명령어를 가진 명령줄 인터페이스
+- **입력 버퍼**: 키보드 입력 처리를 위한 순환 버퍼
 
-- `help` - Show available commands
-- `ls` - List files in filesystem
-- `cat <filename>` - Display file contents
-- `create <filename> <size>` - Create new file
-- `delete <filename>` - Delete file
-- `echo [text]` - Print text to console
-- `memstat` - Show memory allocation statistics
-- `clear` - Clear screen
-- `exit` - Exit shell
+## 셸 명령어
 
-## Prerequisites
+운영체제에는 다음 명령어들을 지원하는 완전한 기능의 셸이 포함되어 있다:
+
+- `help` - 사용 가능한 명령어 보기
+- `ls` - 파일시스템의 파일 목록 보기
+- `cat <filename>` - 파일 내용 표시
+- `create <filename> <size>` - 새 파일 생성
+- `delete <filename>` - 파일 삭제
+- `echo [text]` - 텍스트를 콘솔에 출력
+- `memstat` - 메모리 할당 통계 보기
+- `clear` - 화면 지우기
+- `exit` - 셸 종료
+
+## 필수 요구사항
 
 ### QEMU
 ```bash
@@ -41,18 +45,18 @@ sudo apt-get install qemu-system-misc
 sudo pacman -S qemu-arch-extra
 ```
 
-### Compiler
+### 컴파일러
 ```bash
-# macOS (Recommended)
+# macOS (권장)
 brew install llvm
 
 # Ubuntu/Debian
 sudo apt-get install clang
 ```
 
-## Build and Run
+## 빌드 및 실행
 
-### Quick Start
+### 빠른 시작
 ```bash
 git clone <repository-url>
 cd myos
@@ -60,7 +64,7 @@ chmod +x run.sh
 ./run.sh
 ```
 
-### Manual Build
+### 수동 빌드
 ```bash
 CC=/opt/homebrew/opt/llvm/bin/clang
 CFLAGS="-std=c11 -O2 -g3 -Wall -Wextra --target=riscv32-unknown-elf -fno-stack-protector -ffreestanding -nostdlib"
@@ -75,146 +79,146 @@ qemu-system-riscv32 \
     -kernel kernel.elf
 ```
 
-## Expected Output
+## 예상 출력
 
 ```
 OpenSBI v1.5.1
 ...
-Initializing memory allocator...
-Memory allocator initialized: 1048576 bytes available
-Initializing filesystem...
-Filesystem initialized: 32 file slots available
-Initializing UART and keyboard interrupts...
-UART initialized
-Creating sample files...
-Created file 'welcome.txt' (256 bytes)
-Wrote 21 bytes to file 'welcome.txt'
-Created file 'readme.txt' (512 bytes)
-Wrote 66 bytes to file 'readme.txt'
-Starting shell demo (keyboard input will be simulated)...
+메모리 할당자 초기화 중...
+메모리 할당자 초기화 완료: 1048576 바이트 사용 가능
+파일시스템 초기화 중...
+파일시스템 초기화 완료: 32개 파일 슬롯 사용 가능
+UART 및 키보드 인터럽트 초기화 중...
+UART 초기화 완료
+샘플 파일 생성 중...
+파일 'welcome.txt' 생성 완료 (256 바이트)
+파일 'welcome.txt'에 21 바이트 작성
+파일 'readme.txt' 생성 완료 (512 바이트)
+파일 'readme.txt'에 66 바이트 작성
+셸 데모 시작 (키보드 입력은 시뮬레이션됨)...
 
-=== Fru1t OS Shell Demo ===
-(Simulating user commands since keyboard input not implemented)
+=== Fru1t OS 셸 데모 ===
+(키보드 입력이 구현되지 않아 사용자 명령을 시뮬레이션)
 
 fru1t-os> help
 
-=== Fru1t OS Shell Commands ===
-help          - Show this help message
-ls            - List files in filesystem
-cat <file>    - Display file contents
-create <file> <size> - Create new file
-delete <file> - Delete file
-echo [args]   - Print arguments
-memstat       - Show memory statistics
-clear         - Clear screen
-exit          - Exit shell
+=== Fru1t OS 셸 명령어 ===
+help          - 도움말 메시지 표시
+ls            - 파일시스템의 파일 목록
+cat <file>    - 파일 내용 표시
+create <file> <size> - 새 파일 생성
+delete <file> - 파일 삭제
+echo [args]   - 인자 출력
+memstat       - 메모리 통계 표시
+clear         - 화면 지우기
+exit          - 셸 종료
 
 fru1t-os> ls
 
-=== File System Listing ===
-Files: 2/32
-  welcome.txt (256 bytes)
-  readme.txt (512 bytes)
+=== 파일 시스템 목록 ===
+파일: 2/32
+  welcome.txt (256 바이트)
+  readme.txt (512 바이트)
 
 fru1t-os> cat welcome.txt
-Read 256 bytes from file 'welcome.txt'
-Content of welcome.txt:
-Welcome to Fru1t OS!
+파일 'welcome.txt'에서 256 바이트 읽음
+welcome.txt의 내용:
+Fru1t OS에 오신 것을 환영합니다!
 
 ...
 ```
 
-## Architecture
+## 아키텍처
 
-### Memory Layout
-- **Load Address**: 0x80200000
-- **Stack**: 64KB per process
-- **Heap**: 1MB for dynamic allocation
-- **Max Files**: 32 files, 1KB each
+### 메모리 레이아웃
+- **로드 주소**: 0x80200000
+- **스택**: 프로세스당 64KB
+- **힙**: 동적 할당을 위한 1MB
+- **최대 파일 수**: 32개 파일, 각각 1KB
 
-### Key Components
+### 주요 구성요소
 
-#### Process Management
-- Round-robin scheduler with 10ms time slices
-- Process states: UNUSED, READY, RUNNING, BLOCKED
-- Full context switching with register preservation
+#### 프로세스 관리
+- 10ms 타임 슬라이스를 가진 라운드로빈 스케줄러
+- 프로세스 상태: UNUSED, READY, RUNNING, BLOCKED
+- 레지스터 보존을 포함한 완전한 컨텍스트 스위칭
 
-#### Memory Allocator
-- First-fit allocation algorithm
-- Block splitting and coalescing
-- 8-byte aligned allocations
-- Memory leak detection
+#### 메모리 할당자
+- First-fit 할당 알고리즘
+- 블록 분할 및 병합
+- 8바이트 정렬된 할당
+- 메모리 누수 감지
 
-#### File System
-- In-memory storage with dynamic allocation
-- File operations: create, read, write, delete, list
-- Filename limit: 64 characters
-- File size limit: 1024 bytes
+#### 파일 시스템
+- 동적 할당을 사용한 인메모리 저장소
+- 파일 연산: 생성, 읽기, 쓰기, 삭제, 목록
+- 파일명 제한: 64자
+- 파일 크기 제한: 1024바이트
 
-#### Input System
-- UART-based keyboard input handling
-- Interrupt and polling mode support
-- Circular input buffer (256 bytes)
-- Real-time command processing
+#### 입력 시스템
+- UART 기반 키보드 입력 처리
+- 인터럽트 및 폴링 모드 지원
+- 순환 입력 버퍼 (256바이트)
+- 실시간 명령 처리
 
-## Project Structure
+## 프로젝트 구조
 
 ```
 .
-├── kernel.c        # Main kernel implementation
-├── kernel.h        # Kernel headers and definitions
-├── common.c        # Utility functions (printf, memset, etc.)
-├── common.h        # Common headers
-├── kernel.ld       # Linker script for memory layout
-├── run.sh          # Build and run script
-├── test_input.sh   # Keyboard input testing script
-└── README.md       # This documentation
+├── kernel.c        # 메인 커널 구현
+├── kernel.h        # 커널 헤더 및 정의
+├── common.c        # 유틸리티 함수 (printf, memset 등)
+├── common.h        # 공통 헤더
+├── kernel.ld       # 메모리 레이아웃용 링커 스크립트
+├── run.sh          # 빌드 및 실행 스크립트
+├── test_input.sh   # 키보드 입력 테스트 스크립트
+└── README.md       # 이 문서
 ```
 
-## Development
+## 개발
 
-### Adding New Commands
-1. Add command handler function in `kernel.c`
-2. Update `shell_execute_command()` with new case
-3. Add help text in `cmd_help()`
+### 새 명령어 추가
+1. `kernel.c`에 명령어 핸들러 함수 추가
+2. `shell_execute_command()`에 새 케이스 업데이트
+3. `cmd_help()`에 도움말 텍스트 추가
 
-### Memory Management
-- Use `kmalloc()` and `kfree()` for dynamic allocation
-- Check `print_memory_stats()` for debugging leaks
-- Heap size configurable via `HEAP_SIZE` define
+### 메모리 관리
+- 동적 할당을 위해 `kmalloc()`과 `kfree()` 사용
+- 누수 디버깅을 위해 `print_memory_stats()` 확인
+- `HEAP_SIZE` 정의를 통해 힙 크기 설정 가능
 
-### File System Extension
-- Modify `MAX_FILES` and `MAX_FILESIZE` for different limits
-- Add new file operations in filesystem section
-- Files are stored in RAM and lost on reboot
+### 파일 시스템 확장
+- 다른 제한을 위해 `MAX_FILES`와 `MAX_FILESIZE` 수정
+- 파일시스템 섹션에 새로운 파일 연산 추가
+- 파일은 RAM에 저장되며 재부팅시 손실됨
 
-## Controls
+## 제어
 
-- **Exit QEMU**: Ctrl+A, X
-- **QEMU Monitor**: Ctrl+A, C
-- **Shell Navigation**: Standard terminal controls
+- **QEMU 종료**: Ctrl+A, X
+- **QEMU 모니터**: Ctrl+A, C
+- **셸 탐색**: 표준 터미널 제어
 
-## Known Issues
+## 알려진 문제
 
-- Keyboard input may not work properly in some QEMU configurations
-- Files are not persistent (RAM-only storage)
-- Limited to 32-bit RISC-V architecture
-- No virtual memory management
+- 일부 QEMU 설정에서 키보드 입력이 제대로 작동하지 않을 수 있음
+- 파일이 영구적이지 않음 (RAM 전용 저장소)
+- 32비트 RISC-V 아키텍처로 제한됨
+- 가상 메모리 관리 없음
 
-## License
+## 라이선스
 
-MIT License - Feel free to use and modify.
+MIT 라이선스 - 자유롭게 사용하고 수정하면 된다.
 
-## Contributing
+## 기여
 
-1. Fork the repository
-2. Create a feature branch
-3. Implement your changes
-4. Test thoroughly with `./run.sh`
-5. Submit a pull request
+1. 저장소 포크
+2. 기능 브랜치 생성
+3. 변경사항 구현
+4. `./run.sh`로 철저히 테스트
+5. 풀 리퀘스트 제출
 
-## References
+## 참고자료
 
-- [RISC-V Instruction Set Manual](https://riscv.org/technical/specifications/)
-- [OpenSBI Documentation](https://github.com/riscv-software-src/opensbi)
-- [QEMU RISC-V Documentation](https://www.qemu.org/docs/master/system/target-riscv.html)
+- [RISC-V 명령어 세트 매뉴얼](https://riscv.org/technical/specifications/)
+- [OpenSBI 문서](https://github.com/riscv-software-src/opensbi)
+- [QEMU RISC-V 문서](https://www.qemu.org/docs/master/system/target-riscv.html)
