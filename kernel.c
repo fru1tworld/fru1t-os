@@ -401,7 +401,7 @@ void strcpy(char *dest, const char *src) {
 }
 
 int snprintf(char *str, size_t size, const char *format, ...) {
-    strcpy(str, "<html><head><title>Status</title></head><body><h1>System Status</h1><p>Memory: OK</p><p>Files: OK</p></body></html>");
+    strcpy(str, "Basic snprintf implementation");
     return strlen(str);
 }
 
@@ -644,14 +644,6 @@ void shell_execute_command(const char *cmd, char *args[], int argc) {
         cmd_clear();
     } else if (strcmp(cmd, "echo") == 0) {
         cmd_echo(args, argc);
-    } else if (strcmp(cmd, "netstat") == 0) {
-        cmd_netstat();
-    } else if (strcmp(cmd, "ping") == 0) {
-        if (argc > 1) {
-            cmd_ping(args[1]);
-        } else {
-            printf("Usage: ping <ip_address>\n");
-        }
     } else if (strcmp(cmd, "exit") == 0) {
         shell.running = 0;
         printf("Goodbye!\n");
@@ -684,8 +676,6 @@ void cmd_help(void) {
     printf("echo [args]   - Print arguments\n");
     printf("memstat       - Show memory statistics\n");
     printf("clear         - Clear screen\n");
-    printf("netstat       - Show network status\n");
-    printf("ping <ip>     - Ping remote host\n");
     printf("exit          - Exit shell\n");
     printf("\n");
 }
@@ -863,331 +853,44 @@ char getchar_blocking(void) {
     }
 }
 
-static struct tcp_connection tcp_connections[MAX_CONNECTIONS];
-static uint8_t local_mac[6] = {0x52, 0x54, 0x00, 0x12, 0x34, 0x56};
-static uint32_t local_ip = 0x0A000002;
-static uint16_t next_port = 8000;
-
-uint16_t htons(uint16_t hostshort) {
-    return ((hostshort & 0xFF) << 8) | ((hostshort >> 8) & 0xFF);
-}
-
-uint32_t htonl(uint32_t hostlong) {
-    return ((hostlong & 0xFF) << 24) | 
-           (((hostlong >> 8) & 0xFF) << 16) |
-           (((hostlong >> 16) & 0xFF) << 8) |
-           ((hostlong >> 24) & 0xFF);
-}
-
-uint16_t ntohs(uint16_t netshort) {
-    return htons(netshort);
-}
-
-uint32_t ntohl(uint32_t netlong) {
-    return htonl(netlong);
-}
-
-uint16_t ip_checksum(const void *data, size_t len) {
-    const uint16_t *ptr = (const uint16_t*)data;
-    uint32_t sum = 0;
-    
-    while (len > 1) {
-        sum += *ptr++;
-        len -= 2;
-    }
-    
-    if (len == 1) {
-        sum += *(const uint8_t*)ptr;
-    }
-    
-    while (sum >> 16) {
-        sum = (sum & 0xFFFF) + (sum >> 16);
-    }
-    
-    return ~sum;
-}
-
-void network_init(void) {
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        tcp_connections[i].is_active = 0;
-        tcp_connections[i].state = TCP_CLOSED;
-    }
-    printf("Network stack initialized (IP: 10.0.0.2)\n");
-}
-
-void ethernet_send(const uint8_t *dest_mac, uint16_t ethertype, const void *payload, size_t len) {
-    printf("Sending Ethernet frame to %02x:%02x:%02x:%02x:%02x:%02x\n", 
-           dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
-}
-
-void ip_send(uint32_t dest_ip, uint8_t protocol, const void *payload, size_t len) {
-    struct ip_header ip;
-    ip.version_ihl = 0x45;
-    ip.tos = 0;
-    ip.total_length = htons(sizeof(struct ip_header) + len);
-    ip.id = htons(1234);
-    ip.flags_fragment = htons(0x4000);
-    ip.ttl = 64;
-    ip.protocol = protocol;
-    ip.src_ip = htonl(local_ip);
-    ip.dest_ip = htonl(dest_ip);
-    ip.checksum = 0;
-    ip.checksum = ip_checksum(&ip, sizeof(ip));
-    
-    printf("Sending IP packet to %d.%d.%d.%d\n",
-           (dest_ip >> 24) & 0xFF, (dest_ip >> 16) & 0xFF, 
-           (dest_ip >> 8) & 0xFF, dest_ip & 0xFF);
-}
-
-void tcp_send(uint32_t dest_ip, uint16_t src_port, uint16_t dest_port, 
-              uint32_t seq, uint32_t ack, uint8_t flags, const void *data, size_t len) {
-    struct tcp_header tcp;
-    tcp.src_port = htons(src_port);
-    tcp.dest_port = htons(dest_port);
-    tcp.seq_num = htonl(seq);
-    tcp.ack_num = htonl(ack);
-    tcp.data_offset_flags = (5 << 4);
-    tcp.flags = flags;
-    tcp.window_size = htons(8192);
-    tcp.checksum = 0;
-    tcp.urgent_ptr = 0;
-    
-    printf("Sending TCP %s to %d.%d.%d.%d:%d\n",
-           (flags & TCP_FLAG_SYN) ? "SYN" : 
-           (flags & TCP_FLAG_ACK) ? "ACK" : 
-           (flags & TCP_FLAG_FIN) ? "FIN" : "DATA",
-           (dest_ip >> 24) & 0xFF, (dest_ip >> 16) & 0xFF, 
-           (dest_ip >> 8) & 0xFF, dest_ip & 0xFF, dest_port);
-}
-
-int tcp_listen(uint16_t port) {
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (!tcp_connections[i].is_active) {
-            tcp_connections[i].is_active = 1;
-            tcp_connections[i].local_port = port;
-            tcp_connections[i].state = TCP_LISTEN;
-            printf("TCP listening on port %d\n", port);
-            return i;
-        }
-    }
-    return -1;
-}
-
-struct tcp_connection *tcp_accept(uint16_t port) {
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (tcp_connections[i].is_active && 
-            tcp_connections[i].local_port == port &&
-            tcp_connections[i].state == TCP_ESTABLISHED) {
-            return &tcp_connections[i];
-        }
-    }
-    return NULL;
-}
-
-void tcp_close(struct tcp_connection *conn) {
-    if (conn) {
-        tcp_send(conn->remote_ip, conn->local_port, conn->remote_port,
-                conn->seq_num, conn->ack_num, TCP_FLAG_FIN | TCP_FLAG_ACK, NULL, 0);
-        conn->state = TCP_FIN_WAIT1;
-    }
-}
-
-void http_init(void) {
-    tcp_listen(80);
-    printf("HTTP server initialized on port 80\n");
-}
-
-void http_parse_request(const char *request, struct http_request *req) {
-    const char *ptr = request;
-    int i = 0;
-    
-    while (*ptr && *ptr != ' ' && i < 7) {
-        req->method[i++] = *ptr++;
-    }
-    req->method[i] = '\0';
-    
-    if (*ptr == ' ') ptr++;
-    
-    i = 0;
-    while (*ptr && *ptr != ' ' && i < 255) {
-        req->path[i++] = *ptr++;
-    }
-    req->path[i] = '\0';
-    
-    if (*ptr == ' ') ptr++;
-    
-    i = 0;
-    while (*ptr && *ptr != '\r' && *ptr != '\n' && i < 15) {
-        req->version[i++] = *ptr++;
-    }
-    req->version[i] = '\0';
-    
-    req->content_length = 0;
-}
-
-void http_send_response(struct tcp_connection *conn, struct http_response *response) {
-    char http_header[512];
-    strcpy(http_header, "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n");
-    
-    printf("Sending HTTP response: %d %s\n", response->status_code, response->status_text);
-    
-    tcp_send(conn->remote_ip, conn->local_port, conn->remote_port,
-            conn->seq_num, conn->ack_num, TCP_FLAG_PSH | TCP_FLAG_ACK, 
-            http_header, strlen(http_header));
-    
-    if (response->body_length > 0) {
-        tcp_send(conn->remote_ip, conn->local_port, conn->remote_port,
-                conn->seq_num + strlen(http_header), conn->ack_num, 
-                TCP_FLAG_PSH | TCP_FLAG_ACK, response->body, response->body_length);
-    }
-}
-
-void http_handle_request(struct tcp_connection *conn, const char *request) {
-    struct http_request req = {0};
-    struct http_response response = {0};
-    
-    http_parse_request(request, &req);
-    
-    printf("HTTP Request: %s %s\n", req.method, req.path);
-    
-    if (strcmp(req.path, "/") == 0) {
-        response.status_code = 200;
-        strcpy(response.status_text, "OK");
-        strcpy(response.body, 
-               "<html><head><title>Fru1t OS</title></head>"
-               "<body><h1>Welcome to Fru1t OS!</h1>"
-               "<p>This is a simple HTTP server running on a custom RISC-V OS.</p>"
-               "<ul><li><a href=\"/files\">View Files</a></li>"
-               "<li><a href=\"/status\">System Status</a></li></ul>"
-               "</body></html>");
-        response.body_length = strlen(response.body);
-    } else if (strcmp(req.path, "/files") == 0) {
-        response.status_code = 200;
-        strcpy(response.status_text, "OK");
-        strcpy(response.body, 
-               "<html><head><title>Files - Fru1t OS</title></head>"
-               "<body><h1>File System</h1><ul>"
-               "<li>welcome.txt</li><li>readme.txt</li>"
-               "</ul><a href=\"/\">Back</a></body></html>");
-        response.body_length = strlen(response.body);
-    } else if (strcmp(req.path, "/status") == 0) {
-        response.status_code = 200;
-        strcpy(response.status_text, "OK");
-        snprintf(response.body, sizeof(response.body),
-                "<html><head><title>Status - Fru1t OS</title></head>"
-                "<body><h1>System Status</h1>"
-                "<p>Memory: 1MB heap allocated</p>"
-                "<p>Files: 2/32 slots used</p>"
-                "<p>TCP Connections: Active</p>"
-                "<a href=\"/\">Back</a></body></html>");
-        response.body_length = strlen(response.body);
-    } else {
-        response.status_code = 404;
-        strcpy(response.status_text, "Not Found");
-        strcpy(response.body, 
-               "<html><head><title>404 - Fru1t OS</title></head>"
-               "<body><h1>404 Not Found</h1>"
-               "<p>The requested page was not found.</p>"
-               "<a href=\"/\">Home</a></body></html>");
-        response.body_length = strlen(response.body);
-    }
-    
-    http_send_response(conn, &response);
-}
-
-void process_network_packets(void) {
-    printf("HTTP server ready on port 80\n");
-    printf("TCP/IP stack initialized successfully\n");
-    printf("Sample responses:\n");
-    printf("  GET / -> Welcome page (200 OK)\n");
-    printf("  GET /files -> File listing (200 OK)\n");
-    printf("  GET /status -> System status (200 OK)\n");
-    printf("Network demo complete.\n");
-}
-
-void cmd_netstat(void) {
-    printf("\n=== Network Status ===\n");
-    printf("Local IP: 10.0.0.2\n");
-    printf("MAC Address: 52:54:00:12:34:56\n");
-    printf("HTTP Server: Running on port 80\n");
-    
-    printf("\nActive TCP Connections:\n");
-    int active_count = 0;
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (tcp_connections[i].is_active) {
-            printf("  Port %d: %s\n", 
-                   tcp_connections[i].local_port,
-                   tcp_connections[i].state == TCP_LISTEN ? "LISTENING" :
-                   tcp_connections[i].state == TCP_ESTABLISHED ? "ESTABLISHED" : "OTHER");
-            active_count++;
-        }
-    }
-    if (active_count == 0) {
-        printf("  No active connections\n");
-    }
-    printf("\n");
-}
-
-void cmd_ping(char *target) {
-    if (!target || strlen(target) == 0) {
-        printf("Usage: ping <ip_address>\n");
-        return;
-    }
-    
-    printf("PING %s (simulated)\n", target);
-    printf("64 bytes from %s: icmp_seq=1 ttl=64 time=1.2 ms\n", target);
-    printf("64 bytes from %s: icmp_seq=2 ttl=64 time=1.1 ms\n", target);
-    printf("64 bytes from %s: icmp_seq=3 ttl=64 time=1.3 ms\n", target);
-    printf("--- %s ping statistics ---\n", target);
-    printf("3 packets transmitted, 3 received, 0%% packet loss\n");
-}
 
 void shell_demo(void) {
     printf("\n=== Fru1t OS Shell Demo ===\n");
     printf("(Simulating user commands since keyboard input not implemented)\n\n");
-    
+
     shell_init();
-    
+
     printf("fru1t-os> help\n");
     cmd_help();
-    
+
     printf("fru1t-os> ls\n");
     cmd_ls();
-    
+
     printf("fru1t-os> cat welcome.txt\n");
     cmd_cat("welcome.txt");
-    
+
     printf("fru1t-os> create test.txt 128\n");
     cmd_create("test.txt", "128");
-    
+
     printf("fru1t-os> echo Hello Fru1t OS!\n");
     char *echo_args[] = {"echo", "Hello", "Fru1t", "OS!"};
     cmd_echo(echo_args, 4);
-    
+
     printf("fru1t-os> ls\n");
     cmd_ls();
-    
+
     printf("fru1t-os> memstat\n");
     cmd_memstat();
-    
+
     printf("fru1t-os> delete test.txt\n");
     cmd_delete("test.txt");
-    
+
     printf("fru1t-os> ls\n");
     cmd_ls();
-    
-    printf("fru1t-os> netstat\n");
-    cmd_netstat();
-    
-    printf("fru1t-os> ping 8.8.8.8\n");
-    cmd_ping("8.8.8.8");
-    
-    printf("\nfru1t-os> Testing HTTP server...\n");
-    process_network_packets();
-    
+
     printf("fru1t-os> exit\n");
     printf("Goodbye!\n");
-    
+
     printf("\n=== Shell Demo Complete ===\n");
 }
 
@@ -1204,10 +907,6 @@ void kernel_main(void) {
     uart_init();
     input_buffer_init();
     uart_enable_interrupts();
-    
-    printf("Initializing network stack...\n");
-    network_init();
-    http_init();
     
     printf("Creating sample files...\n");
     fs_create("welcome.txt", 256);
