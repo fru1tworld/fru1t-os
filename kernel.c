@@ -894,35 +894,45 @@ void shell_demo(void) {
     printf("\n=== Shell Demo Complete ===\n");
 }
 
+/* Test function declarations */
+extern void test_all_features(void);
+
 void kernel_main(void) {
     memset(bss, 0, (size_t) bss_end - (size_t) bss);
-    
+
     printf("Initializing memory allocator...\n");
     memory_init();
-    
+
     printf("Initializing filesystem...\n");
     fs_init();
-    
+
     printf("Initializing UART and keyboard interrupts...\n");
     uart_init();
     input_buffer_init();
     uart_enable_interrupts();
-    
+
     printf("Creating sample files...\n");
     fs_create("welcome.txt", 256);
     const char *welcome_msg = "Welcome to Fru1t OS!";
     fs_write("welcome.txt", welcome_msg, strlen(welcome_msg) + 1);
-    
+
     fs_create("readme.txt", 512);
     const char *readme_msg = "This is a simple operating system with basic shell functionality.";
     fs_write("readme.txt", readme_msg, strlen(readme_msg) + 1);
-    
+
+    /* Run CFS and epoll tests */
+    printf("\n");
+    printf("================================================\n");
+    printf("  Running Red-Black Tree, CFS and epoll Tests\n");
+    printf("================================================\n");
+    test_all_features();
+
     printf("Starting interactive shell...\n");
     shell_init();
     printf("\n=== Welcome to Fru1t OS Shell ===\n");
     printf("Type 'help' for available commands\n");
     printf("Press Ctrl+A, X to exit QEMU\n\n");
-    
+
     while (1) {
         shell_run();
         wait_for_interrupt();
