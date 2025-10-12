@@ -1,10 +1,10 @@
 #include "fd.h"
 #include "common.h"
 
-/* Global file descriptor table */
+/* 전역 파일 디스크립터 테이블 */
 struct fd_table global_fd_table;
 
-/* UART file descriptor operations */
+/* UART 파일 디스크립터 연산 */
 static int uart_fd_read(void *ctx, void *buf, size_t count) {
     (void)ctx;
     char *cbuf = (char *)buf;
@@ -35,10 +35,10 @@ static int uart_fd_poll(void *ctx) {
     (void)ctx;
     int flags = 0;
 
-    /* UART is always writable */
+    /* UART는 항상 쓰기 가능 */
     flags |= FD_WRITABLE;
 
-    /* Check if readable */
+    /* 읽기 가능한지 확인 */
     if (uart_rx_ready()) {
         flags |= FD_READABLE;
     }
@@ -48,7 +48,7 @@ static int uart_fd_poll(void *ctx) {
 
 static void uart_fd_close(void *ctx) {
     (void)ctx;
-    /* UART can't really be closed */
+    /* UART는 실제로 닫을 수 없음 */
 }
 
 struct fd_ops uart_fd_ops = {
@@ -58,7 +58,7 @@ struct fd_ops uart_fd_ops = {
     .close = uart_fd_close,
 };
 
-/* Initialize file descriptor subsystem */
+/* 파일 디스크립터 서브시스템 초기화 */
 void fd_init(void) {
     for (int i = 0; i < MAX_FDS; i++) {
         global_fd_table.fds[i].fd_num = i;
@@ -73,7 +73,7 @@ void fd_init(void) {
     printf("File descriptor subsystem initialized\n");
 }
 
-/* Allocate a new file descriptor */
+/* 새 파일 디스크립터 할당 */
 int fd_alloc(int type, void *context, struct fd_ops *ops) {
     for (int i = 0; i < MAX_FDS; i++) {
         int fd_num = (global_fd_table.next_fd + i) % MAX_FDS;
@@ -97,7 +97,7 @@ int fd_alloc(int type, void *context, struct fd_ops *ops) {
     return -1;
 }
 
-/* Get file descriptor structure */
+/* 파일 디스크립터 구조체 가져오기 */
 struct fd *fd_get(int fd_num) {
     if (fd_num < 0 || fd_num >= MAX_FDS) {
         return NULL;
@@ -111,7 +111,7 @@ struct fd *fd_get(int fd_num) {
     return fd;
 }
 
-/* Close a file descriptor */
+/* 파일 디스크립터 닫기 */
 int fd_close(int fd_num) {
     struct fd *fd = fd_get(fd_num);
     if (!fd) {
@@ -136,7 +136,7 @@ int fd_close(int fd_num) {
     return 0;
 }
 
-/* Poll file descriptor for events */
+/* 이벤트에 대해 파일 디스크립터 폴링 */
 int fd_poll(int fd_num) {
     struct fd *fd = fd_get(fd_num);
     if (!fd || !fd->ops || !fd->ops->poll) {
@@ -148,7 +148,7 @@ int fd_poll(int fd_num) {
     return flags;
 }
 
-/* Update file descriptor flags */
+/* 파일 디스크립터 플래그 업데이트 */
 void fd_update_flags(int fd_num, int flags) {
     struct fd *fd = fd_get(fd_num);
     if (fd) {

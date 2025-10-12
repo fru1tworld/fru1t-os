@@ -1,10 +1,10 @@
 #include "epoll.h"
 #include "common.h"
 
-/* Global epoll instances */
+/* 전역 epoll 인스턴스들 */
 struct epoll_instances global_epoll;
 
-/* Initialize epoll subsystem */
+/* epoll 서브시스템 초기화 */
 void epoll_init(void) {
     for (int i = 0; i < MAX_EPOLL_INSTANCES; i++) {
         global_epoll.instances[i].epfd = -1;
@@ -17,7 +17,7 @@ void epoll_init(void) {
     printf("epoll subsystem initialized\n");
 }
 
-/* Get epoll instance */
+/* epoll 인스턴스 가져오기 */
 struct epoll_instance *epoll_get_instance(int epfd) {
     for (int i = 0; i < MAX_EPOLL_INSTANCES; i++) {
         if (global_epoll.instances[i].in_use &&
@@ -28,15 +28,15 @@ struct epoll_instance *epoll_get_instance(int epfd) {
     return NULL;
 }
 
-/* Create an epoll instance */
+/* epoll 인스턴스 생성 */
 int epoll_create(int size) {
-    (void)size;  /* Size hint is ignored in modern Linux too */
+    (void)size;  /* 크기 힌트는 최신 Linux에서도 무시됨 */
 
     for (int i = 0; i < MAX_EPOLL_INSTANCES; i++) {
         if (!global_epoll.instances[i].in_use) {
             struct epoll_instance *epi = &global_epoll.instances[i];
 
-            /* Allocate an epoll fd (using negative numbers to distinguish) */
+            /* epoll fd 할당 (구분을 위해 음수 사용) */
             epi->epfd = -(i + 1);
             epi->items_tree = RB_ROOT;
             epi->ready_list = NULL;
@@ -49,10 +49,10 @@ int epoll_create(int size) {
     }
 
     printf("epoll: No free epoll instances\n");
-    return -999;  /* Error indicator different from valid epfd */
+    return -999;  /* 유효한 epfd와 다른 에러 표시자 */
 }
 
-/* Find item in RB-tree by fd */
+/* fd로 RB 트리에서 아이템 찾기 */
 struct epoll_item *epoll_find_item(struct epoll_instance *epi, int fd) {
     struct rb_node *node = epi->items_tree.rb_node;
 
@@ -71,12 +71,12 @@ struct epoll_item *epoll_find_item(struct epoll_instance *epi, int fd) {
     return NULL;
 }
 
-/* Insert item into RB-tree */
+/* RB 트리에 아이템 삽입 */
 static int epoll_insert_item(struct epoll_instance *epi, struct epoll_item *new_item) {
     struct rb_node **link = &epi->items_tree.rb_node;
     struct rb_node *parent = NULL;
 
-    /* Find insertion point */
+    /* 삽입 위치 찾기 */
     while (*link) {
         struct epoll_item *item;
         parent = *link;
@@ -87,12 +87,12 @@ static int epoll_insert_item(struct epoll_instance *epi, struct epoll_item *new_
         } else if (new_item->fd > item->fd) {
             link = &parent->right;
         } else {
-            /* Duplicate fd */
+            /* 중복 fd */
             return -1;
         }
     }
 
-    /* Insert into RB-tree */
+    /* RB 트리에 삽입 */
     new_item->rb_node.parent = parent;
     new_item->rb_node.left = NULL;
     new_item->rb_node.right = NULL;
@@ -113,7 +113,7 @@ static int epoll_insert_item(struct epoll_instance *epi, struct epoll_item *new_
     return 0;
 }
 
-/* Control interface for epoll */
+/* epoll 제어 인터페이스 */
 int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
     struct epoll_instance *epi = epoll_get_instance(epfd);
     if (!epi) {
@@ -121,7 +121,7 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
         return -1;
     }
 
-    /* Verify fd exists */
+    /* fd가 존재하는지 확인 */
     struct fd *fd_entry = fd_get(fd);
     if (!fd_entry) {
         printf("epoll_ctl: Invalid fd %d\n", fd);
@@ -130,13 +130,13 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
 
     switch (op) {
         case EPOLL_CTL_ADD: {
-            /* Check if fd already exists */
+            /* fd가 이미 존재하는지 확인 */
             if (epoll_find_item(epi, fd)) {
                 printf("epoll_ctl: fd %d already in epoll instance\n", fd);
                 return -1;
             }
 
-            /* Allocate new item */
+            /* 새 아이템 할당 */
             struct epoll_item *item = (struct epoll_item *)kmalloc(sizeof(struct epoll_item));
             if (!item) {
                 printf("epoll_ctl: Failed to allocate epoll_item\n");
@@ -197,7 +197,7 @@ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event) {
     return 0;
 }
 
-/* Poll all monitored fds */
+/* 모든 모니터링 중인 fd 폴링 */
 void epoll_poll_fds(struct epoll_instance *epi) {
     struct rb_node *node = rb_first(&epi->items_tree);
 
@@ -206,7 +206,7 @@ void epoll_poll_fds(struct epoll_instance *epi) {
         int fd_flags = fd_poll(item->fd);
         uint32_t revents = 0;
 
-        /* Convert fd flags to epoll events */
+        /* fd 플래그를 epoll 이벤트로 변환 */
         if (fd_flags & FD_READABLE) {
             revents |= EPOLLIN;
         }
@@ -220,14 +220,14 @@ void epoll_poll_fds(struct epoll_instance *epi) {
             revents |= EPOLLHUP;
         }
 
-        /* Check if any requested events occurred */
+        /* 요청된 이벤트가 발생했는지 확인 */
         item->revents = revents & item->events;
 
         node = rb_next(node);
     }
 }
 
-/* Wait for events */
+/* 이벤트 대기 */
 int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout) {
     struct epoll_instance *epi = epoll_get_instance(epfd);
     if (!epi) {
@@ -240,10 +240,10 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
         return -1;
     }
 
-    /* Poll all fds to update their status */
+    /* 모든 fd를 폴링하여 상태 업데이트 */
     epoll_poll_fds(epi);
 
-    /* Collect ready events */
+    /* 준비된 이벤트 수집 */
     int num_ready = 0;
     struct rb_node *node = rb_first(&epi->items_tree);
 
@@ -263,14 +263,14 @@ int epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
     }
 
     if (num_ready == 0 && timeout != 0) {
-        /* In a real implementation, we would sleep here */
+        /* 실제 구현에서는 여기서 대기함 */
         printf("epoll_wait: No events ready (would block with timeout=%d)\n", timeout);
     }
 
     return num_ready;
 }
 
-/* Close epoll instance */
+/* epoll 인스턴스 닫기 */
 int epoll_close(int epfd) {
     struct epoll_instance *epi = epoll_get_instance(epfd);
     if (!epi) {
@@ -278,7 +278,7 @@ int epoll_close(int epfd) {
         return -1;
     }
 
-    /* Free all items */
+    /* 모든 아이템 해제 */
     struct rb_node *node = rb_first(&epi->items_tree);
     while (node) {
         struct epoll_item *item = rb_entry(node, struct epoll_item, rb_node);
@@ -290,7 +290,7 @@ int epoll_close(int epfd) {
         node = next;
     }
 
-    /* Clear instance */
+    /* 인스턴스 초기화 */
     epi->epfd = -1;
     epi->items_tree = RB_ROOT;
     epi->ready_list = NULL;

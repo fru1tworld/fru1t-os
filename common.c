@@ -9,15 +9,15 @@ void printf(const char *fmt, ...) {
 
     while (*fmt) {
         if (*fmt == '%') {
-            fmt++; // Skip '%'
-            switch (*fmt) { // Read the next character
-                case '\0': // '%' at the end of the format string
+            fmt++; // '%' 건너뛰기
+            switch (*fmt) { // 다음 문자 읽기
+                case '\0': // 포맷 문자열 끝에 '%'
                     putchar('%');
                     goto end;
-                case '%': // Print '%'
+                case '%': // '%' 출력
                     putchar('%');
                     break;
-                case 's': { // Print a NULL-terminated string.
+                case 's': { // NULL로 끝나는 문자열 출력
                     const char *s = va_arg(vargs, const char *);
                     while (*s) {
                         putchar(*s);
@@ -25,7 +25,7 @@ void printf(const char *fmt, ...) {
                     }
                     break;
                 }
-                case 'd': { // Print an integer in decimal.
+                case 'd': { // 10진수 정수 출력
                     int value = va_arg(vargs, int);
                     unsigned magnitude = value; // https://github.com/nuta/operating-system-in-1000-lines/issues/64
                     if (value < 0) {
@@ -45,7 +45,7 @@ void printf(const char *fmt, ...) {
 
                     break;
                 }
-                case 'x': { // Print an integer in hexadecimal.
+                case 'x': { // 16진수 정수 출력
                     unsigned value = va_arg(vargs, unsigned);
                     for (int i = 7; i >= 0; i--) {
                         unsigned nibble = (value >> (i * 4)) & 0xf;
@@ -53,7 +53,7 @@ void printf(const char *fmt, ...) {
                     }
                     break;
                 }
-                case 'u': { // Print unsigned integer
+                case 'u': { // 부호 없는 정수 출력
                     unsigned value = va_arg(vargs, unsigned);
                     unsigned divisor = 1;
                     while (value / divisor > 9)
@@ -66,22 +66,22 @@ void printf(const char *fmt, ...) {
                     }
                     break;
                 }
-                case 'l': { // Handle long/long long integers
-                    fmt++; // Skip first 'l'
+                case 'l': { // long/long long 정수 처리
+                    fmt++; // 첫 번째 'l' 건너뛰기
                     if (*fmt == 'l') {
                         // long long
-                        fmt++; // Skip second 'l'
+                        fmt++; // 두 번째 'l' 건너뛰기
                         if (*fmt == 'u') {
                             // unsigned long long
                             uint64_t value = va_arg(vargs, uint64_t);
 
-                            // Special case for 0
+                            // 0에 대한 특수 처리
                             if (value == 0) {
                                 putchar('0');
                                 break;
                             }
 
-                            // Convert to string (simplified for 32-bit)
+                            // 문자열로 변환 (32비트용 간소화)
                             char buf[32];
                             int pos = 0;
 
@@ -90,7 +90,7 @@ void printf(const char *fmt, ...) {
                                 value /= 10;
                             }
 
-                            // Print in reverse
+                            // 역순으로 출력
                             for (int i = pos - 1; i >= 0; i--) {
                                 putchar(buf[i]);
                             }
@@ -154,7 +154,7 @@ void printf(const char *fmt, ...) {
                     }
                     break;
                 }
-                case 'p': { // Print pointer address
+                case 'p': { // 포인터 주소 출력
                     void *ptr = va_arg(vargs, void *);
                     unsigned value = (unsigned)(uintptr_t)ptr;
                     putchar('0');

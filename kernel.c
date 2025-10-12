@@ -927,14 +927,15 @@ void kernel_main(void) {
     printf("================================================\n");
     test_all_features();
 
-    printf("Starting interactive shell...\n");
-    shell_init();
-    printf("\n=== Welcome to Fru1t OS Shell ===\n");
-    printf("Type 'help' for available commands\n");
-    printf("Press Ctrl+A, X to exit QEMU\n\n");
+    printf("\n");
+    printf("================================================\n");
+    printf("  All tests completed successfully!\n");
+    printf("  System halting...\n");
+    printf("================================================\n");
+    printf("\nPress Ctrl+A, X to exit QEMU\n\n");
 
+    // Halt the system instead of running the shell
     while (1) {
-        shell_run();
-        wait_for_interrupt();
+        __asm__ volatile("wfi"); // Wait for interrupt (low power mode)
     }
 }

@@ -4,6 +4,8 @@
 #include "cfs.h"
 #include "fd.h"
 #include "epoll.h"
+#include "btree.h"
+#include "inode.h"
 
 /* Test Red-Black Tree */
 void test_rbtree(void) {
@@ -185,16 +187,20 @@ void test_epoll(void) {
     printf("\nepoll test completed!\n");
 }
 
+/* B-Tree Filesystem Test */
+extern void test_btree_filesystem(void);
+
 /* Combined integration test */
 void test_all_features(void) {
     printf("\n");
     printf("========================================\n");
-    printf("  Testing CFS and epoll Features\n");
+    printf("  Testing All Features\n");
     printf("========================================\n");
 
     test_rbtree();
     test_cfs();
     test_epoll();
+    test_btree_filesystem();
 
     printf("\n");
     printf("========================================\n");

@@ -99,7 +99,7 @@ void yield(void);
 void process_exit(void);
 void context_switch(struct process *prev, struct process *next);
 
-#define HEAP_SIZE (1024 * 1024)
+#define HEAP_SIZE (4 * 1024 * 1024)
 #define BLOCK_SIZE 32
 #define NUM_BLOCKS (HEAP_SIZE / BLOCK_SIZE)
 

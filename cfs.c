@@ -1,14 +1,14 @@
 #include "cfs.h"
 #include "common.h"
 
-/* Global CFS runqueue */
+/* 전역 CFS 실행 큐 */
 struct cfs_rq cfs_runqueue;
 struct cfs_process *cfs_current = NULL;
 
-/* Array of CFS processes */
+/* CFS 프로세스 배열 */
 static struct cfs_process cfs_processes[MAX_PROCESSES];
 
-/* Nice to weight conversion table (Linux kernel values) */
+/* Nice 값을 가중치로 변환하는 테이블 (Linux 커널 값) */
 static const uint32_t prio_to_weight[40] = {
     /* -20 */ 88761, 71755, 56483, 46273, 36291,
     /* -15 */ 29154, 23254, 18705, 14949, 11916,
@@ -20,25 +20,25 @@ static const uint32_t prio_to_weight[40] = {
     /*  15 */ 36, 29, 23, 18, 15,
 };
 
-/* Get current time in nanoseconds (simplified) */
+/* 나노초 단위로 현재 시간 가져오기 (간소화됨) */
 static uint64_t get_time_ns(void) {
-    /* In a real system, this would read hardware timer */
+    /* 실제 시스템에서는 하드웨어 타이머를 읽음 */
     static uint64_t counter = 0;
-    counter += 1000000; /* Increment by 1ms */
+    counter += 1000000; /* 1ms씩 증가 */
     return counter;
 }
 
-/* Convert nice value to weight */
+/* nice 값을 가중치로 변환 */
 uint32_t nice_to_weight(int nice) {
     if (nice < -20) nice = -20;
     if (nice > 19) nice = 19;
     return prio_to_weight[nice + 20];
 }
 
-/* Calculate delta with weight scaling (simplified for 32-bit) */
+/* 가중치 스케일링을 적용한 델타 계산 (32비트용 간소화) */
 uint64_t calc_delta_fair(uint64_t delta, struct sched_entity *se) {
-    /* Simplified: avoid 64-bit division on 32-bit platform */
-    /* Use 32-bit arithmetic when possible */
+    /* 간소화: 32비트 플랫폼에서 64비트 나눗셈 피하기 */
+    /* 가능하면 32비트 산술 연산 사용 */
     if (se->weight != NICE_0_LOAD && delta < 0xFFFFFFFF) {
         uint32_t delta32 = (uint32_t)delta;
         uint32_t scaled = (delta32 * NICE_0_LOAD) / se->weight;
@@ -47,7 +47,7 @@ uint64_t calc_delta_fair(uint64_t delta, struct sched_entity *se) {
     return delta;
 }
 
-/* Update minimum vruntime */
+/* 최소 vruntime 업데이트 */
 static void update_min_vruntime(struct cfs_rq *cfs_rq) {
     uint64_t vruntime = cfs_rq->min_vruntime;
 
@@ -69,7 +69,7 @@ static void update_min_vruntime(struct cfs_rq *cfs_rq) {
                            vruntime : cfs_rq->min_vruntime;
 }
 
-/* Initialize CFS scheduler */
+/* CFS 스케줄러 초기화 */
 void cfs_init(void) {
     cfs_runqueue.tasks_timeline = RB_ROOT;
     cfs_runqueue.rb_leftmost = NULL;
@@ -90,7 +90,7 @@ void cfs_init(void) {
     printf("CFS scheduler initialized\n");
 }
 
-/* Enqueue task into RB-tree */
+/* RB 트리에 태스크 삽입 */
 void cfs_enqueue_task(struct cfs_process *proc) {
     struct cfs_rq *cfs_rq = &cfs_runqueue;
     struct sched_entity *se = &proc->se;
@@ -102,7 +102,7 @@ void cfs_enqueue_task(struct cfs_process *proc) {
         return;
     }
 
-    /* Find insertion point */
+    /* 삽입 위치 찾기 */
     while (*link) {
         struct sched_entity *entry;
         parent = *link;
@@ -116,12 +116,12 @@ void cfs_enqueue_task(struct cfs_process *proc) {
         }
     }
 
-    /* Update leftmost pointer if necessary */
+    /* 필요시 leftmost 포인터 업데이트 */
     if (leftmost) {
         cfs_rq->rb_leftmost = &se->run_node;
     }
 
-    /* Insert into RB-tree */
+    /* RB 트리에 삽입 */
     se->run_node.parent = parent;
     se->run_node.left = NULL;
     se->run_node.right = NULL;
@@ -148,7 +148,7 @@ void cfs_enqueue_task(struct cfs_process *proc) {
            proc->base.pid, se->vruntime, se->weight);
 }
 
-/* Dequeue task from RB-tree */
+/* RB 트리에서 태스크 제거 */
 void cfs_dequeue_task(struct cfs_process *proc) {
     struct cfs_rq *cfs_rq = &cfs_runqueue;
     struct sched_entity *se = &proc->se;
@@ -157,12 +157,12 @@ void cfs_dequeue_task(struct cfs_process *proc) {
         return;
     }
 
-    /* Update leftmost if necessary */
+    /* 필요시 leftmost 업데이트 */
     if (cfs_rq->rb_leftmost == &se->run_node) {
         cfs_rq->rb_leftmost = rb_next(&se->run_node);
     }
 
-    /* Remove from RB-tree */
+    /* RB 트리에서 제거 */
     rb_erase(&se->run_node, &cfs_rq->tasks_timeline);
     RB_CLEAR_NODE(&se->run_node);
 
@@ -175,7 +175,7 @@ void cfs_dequeue_task(struct cfs_process *proc) {
     printf("CFS: Dequeued process %d\n", proc->base.pid);
 }
 
-/* Pick next task with minimum vruntime */
+/* 최소 vruntime을 가진 다음 태스크 선택 */
 struct cfs_process *cfs_pick_next_task(void) {
     struct cfs_rq *cfs_rq = &cfs_runqueue;
     struct sched_entity *se;
@@ -188,7 +188,7 @@ struct cfs_process *cfs_pick_next_task(void) {
     return rb_entry(&se->run_node, struct cfs_process, se.run_node);
 }
 
-/* Update current task's runtime */
+/* 현재 태스크의 실행시간 업데이트 */
 void cfs_update_curr(struct cfs_process *curr) {
     struct sched_entity *se = &curr->se;
     uint64_t now = get_time_ns();
@@ -203,7 +203,7 @@ void cfs_update_curr(struct cfs_process *curr) {
     se->exec_start = now;
     se->sum_exec_runtime += delta_exec;
 
-    /* Update vruntime with weight scaling */
+    /* 가중치 스케일링을 적용하여 vruntime 업데이트 */
     se->vruntime += calc_delta_fair(delta_exec, se);
 
     update_min_vruntime(&cfs_runqueue);
@@ -212,22 +212,22 @@ void cfs_update_curr(struct cfs_process *curr) {
            curr->base.pid, se->vruntime, delta_exec);
 }
 
-/* Check if current should be preempted */
+/* 현재 태스크가 선점되어야 하는지 확인 */
 int cfs_check_preempt_curr(struct cfs_process *curr, struct cfs_process *new) {
     uint64_t gran = MIN_GRANULARITY;
     uint64_t vdiff = curr->se.vruntime - new->se.vruntime;
 
-    /* Preempt if vruntime difference exceeds granularity */
+    /* vruntime 차이가 granularity를 초과하면 선점 */
     return vdiff > gran;
 }
 
-/* Main CFS scheduler function */
+/* 메인 CFS 스케줄러 함수 */
 void cfs_scheduler_tick(void) {
     struct cfs_process *curr = cfs_current;
     struct cfs_process *next;
 
     if (!curr) {
-        /* No current task, pick next */
+        /* 현재 태스크 없음, 다음 태스크 선택 */
         next = cfs_pick_next_task();
         if (next) {
             cfs_dequeue_task(next);
@@ -240,36 +240,36 @@ void cfs_scheduler_tick(void) {
         return;
     }
 
-    /* Update current task's runtime */
+    /* 현재 태스크의 실행시간 업데이트 */
     cfs_update_curr(curr);
 
-    /* Check if we should preempt */
+    /* 선점이 필요한지 확인 */
     next = cfs_pick_next_task();
     if (next && cfs_check_preempt_curr(curr, next)) {
-        /* Context switch needed */
+        /* 컨텍스트 스위치 필요 */
         printf("CFS: Preempting process %d with process %d\n",
                curr->base.pid, next->base.pid);
 
-        /* Put current back on runqueue */
+        /* 현재 태스크를 실행 큐에 다시 넣기 */
         curr->base.state = PROC_READY;
         curr->se.exec_start = 0;
         cfs_enqueue_task(curr);
 
-        /* Schedule next */
+        /* 다음 태스크 스케줄 */
         cfs_dequeue_task(next);
         next->base.state = PROC_RUNNING;
         next->se.exec_start = get_time_ns();
         cfs_current = next;
 
-        /* In a real system, do context_switch(curr, next) here */
+        /* 실제 시스템에서는 여기서 context_switch(curr, next) 수행 */
     }
 }
 
-/* Create a CFS process */
+/* CFS 프로세스 생성 */
 struct cfs_process *cfs_create_process(void (*entry_point)(void), int nice) {
     struct cfs_process *proc = NULL;
 
-    /* Find free slot */
+    /* 빈 슬롯 찾기 */
     for (int i = 0; i < MAX_PROCESSES; i++) {
         if (cfs_processes[i].base.state == PROC_UNUSED) {
             proc = &cfs_processes[i];
@@ -282,7 +282,7 @@ struct cfs_process *cfs_create_process(void (*entry_point)(void), int nice) {
         return NULL;
     }
 
-    /* Initialize base process */
+    /* 기본 프로세스 초기화 */
     proc->base.state = PROC_READY;
     proc->base.sp = (vaddr_t)&proc->base.stack[STACK_SIZE - sizeof(struct trap_frame)];
     proc->base.trap_frame = (struct trap_frame *)proc->base.sp;
@@ -291,7 +291,7 @@ struct cfs_process *cfs_create_process(void (*entry_point)(void), int nice) {
     proc->base.trap_frame->ra = (uint32_t)entry_point;
     proc->base.trap_frame->sp = (uint32_t)&proc->base.stack[STACK_SIZE - 8];
 
-    /* Initialize scheduling entity */
+    /* 스케줄링 엔티티 초기화 */
     proc->nice = nice;
     proc->se.weight = nice_to_weight(nice);
     proc->se.vruntime = cfs_runqueue.min_vruntime;
@@ -303,7 +303,7 @@ struct cfs_process *cfs_create_process(void (*entry_point)(void), int nice) {
     printf("CFS: Created process %d (nice=%d, weight=%u)\n",
            proc->base.pid, nice, proc->se.weight);
 
-    /* Add to runqueue */
+    /* 실행 큐에 추가 */
     cfs_enqueue_task(proc);
 
     return proc;
