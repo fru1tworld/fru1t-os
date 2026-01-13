@@ -7,3 +7,9 @@
 *.bin
 *.log
 *.pcap# Cache Refresh
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
