@@ -1,0 +1,15 @@
+/disk/*
+!/disk/.gitkeep
+*.map
+*.tar
+*.o
+*.elf
+*.bin
+*.log
+*.pcap# Cache Refresh
+
+# IDE and OS files
+.idea/
+.vscode/
+*.iml
+.DS_Store
