@@ -2,6 +2,10 @@
 
 RISC-V 32비트 아키텍처용 C언어로 작성된 최소한의 운영체제 커널, 키보드 인터럽트 처리와 대화형 셸 기능을 구현
 
+## Tech Stack
+
+`C` `RISC-V` `QEMU` `Clang/LLVM` `OpenSBI`
+
 ## 개발 도움
 
 이 프로젝트는 OpenSBI 통합 부분에서 Claude AI의 지원을 받음
